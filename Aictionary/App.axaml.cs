@@ -1,6 +1,8 @@
+using System;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using Aictionary.Services;
 using Aictionary.ViewModels;
 using Aictionary.Views;
 
@@ -17,9 +19,16 @@ public partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
+            // Initialize services
+            var dictionaryService = new DictionaryService();
+
+            // Get OpenAI API key from environment variable
+            var apiKey = Environment.GetEnvironmentVariable("OPENAI_API_KEY") ?? string.Empty;
+            var openAIService = new OpenAIService(apiKey);
+
             desktop.MainWindow = new MainWindow
             {
-                DataContext = new MainWindowViewModel(),
+                DataContext = new MainWindowViewModel(dictionaryService, openAIService),
             };
         }
 

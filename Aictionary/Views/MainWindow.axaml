@@ -3,18 +3,135 @@
         xmlns:vm="using:Aictionary.ViewModels"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="700"
         x:Class="Aictionary.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Icon="/Assets/avalonia-logo.ico"
-        Title="Aictionary">
+        Title="Aictionary - AI Dictionary"
+        Width="900" Height="700">
 
     <Design.DataContext>
-        <!-- This only sets the DataContext for the previewer in an IDE,
-             to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
         <vm:MainWindowViewModel/>
     </Design.DataContext>
 
-    <TextBlock Text="{Binding Greeting}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+    <Grid Margin="20" RowDefinitions="Auto,*">
+        <!-- Search Section -->
+        <StackPanel Grid.Row="0" Spacing="10">
+            <TextBlock Text="Aictionary" FontSize="24" FontWeight="Bold" HorizontalAlignment="Center"/>
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBox Grid.Column="0"
+                         Text="{Binding SearchText}"
+                         Watermark="Enter a word to search..."
+                         FontSize="16"
+                         Padding="10"/>
+                <Button Grid.Column="1"
+                        Content="Search"
+                        Command="{Binding SearchCommand}"
+                        Margin="10,0,0,0"
+                        Padding="20,10"
+                        FontSize="16"/>
+            </Grid>
 
+            <!-- Loading Indicator -->
+            <ProgressBar IsIndeterminate="True" IsVisible="{Binding IsLoading}" Height="4"/>
+
+            <!-- Error Message -->
+            <TextBlock Text="{Binding ErrorMessage}"
+                       Foreground="Red"
+                       IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                       TextWrapping="Wrap"/>
+        </StackPanel>
+
+        <!-- Definition Display -->
+        <ScrollViewer Grid.Row="1" Margin="0,20,0,0" IsVisible="{Binding CurrentDefinition, Converter={x:Static ObjectConverters.IsNotNull}}">
+            <StackPanel Spacing="15">
+                <!-- Word and Pronunciation -->
+                <StackPanel>
+                    <TextBlock Text="{Binding CurrentDefinition.Word}" FontSize="32" FontWeight="Bold"/>
+                    <TextBlock Text="{Binding CurrentDefinition.Pronunciation}" FontSize="18" Foreground="Gray"/>
+                    <TextBlock Text="{Binding CurrentDefinition.ConciseDefinition}" FontSize="16" Margin="0,5,0,0" TextWrapping="Wrap"/>
+                </StackPanel>
+
+                <!-- Word Forms -->
+                <Border BorderBrush="LightGray" BorderThickness="1" Padding="15" CornerRadius="5"
+                        IsVisible="{Binding CurrentDefinition.Forms, Converter={x:Static ObjectConverters.IsNotNull}}">
+                    <StackPanel Spacing="5">
+                        <TextBlock Text="Word Forms" FontSize="18" FontWeight="SemiBold"/>
+                        <StackPanel Spacing="3" Margin="10,5,0,0">
+                            <TextBlock IsVisible="{Binding CurrentDefinition.Forms.ThirdPersonSingular, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                <Run Text="Third Person Singular: " FontWeight="SemiBold"/>
+                                <Run Text="{Binding CurrentDefinition.Forms.ThirdPersonSingular}"/>
+                            </TextBlock>
+                            <TextBlock IsVisible="{Binding CurrentDefinition.Forms.PastTense, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                <Run Text="Past Tense: " FontWeight="SemiBold"/>
+                                <Run Text="{Binding CurrentDefinition.Forms.PastTense}"/>
+                            </TextBlock>
+                            <TextBlock IsVisible="{Binding CurrentDefinition.Forms.PastParticiple, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                <Run Text="Past Participle: " FontWeight="SemiBold"/>
+                                <Run Text="{Binding CurrentDefinition.Forms.PastParticiple}"/>
+                            </TextBlock>
+                            <TextBlock IsVisible="{Binding CurrentDefinition.Forms.PresentParticiple, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                <Run Text="Present Participle: " FontWeight="SemiBold"/>
+                                <Run Text="{Binding CurrentDefinition.Forms.PresentParticiple}"/>
+                            </TextBlock>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- Definitions -->
+                <Border BorderBrush="LightGray" BorderThickness="1" Padding="15" CornerRadius="5">
+                    <StackPanel Spacing="10">
+                        <TextBlock Text="Definitions" FontSize="18" FontWeight="SemiBold"/>
+                        <ItemsControl ItemsSource="{Binding CurrentDefinition.Definitions}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border BorderBrush="LightGray" BorderThickness="0,0,0,1" Padding="10,10,10,15" Margin="0,5">
+                                        <StackPanel Spacing="5">
+                                            <TextBlock Text="{Binding Pos}" FontWeight="SemiBold" FontStyle="Italic" Foreground="DarkBlue"/>
+                                            <TextBlock TextWrapping="Wrap">
+                                                <Run Text="English: " FontWeight="SemiBold"/>
+                                                <Run Text="{Binding ExplanationEn}"/>
+                                            </TextBlock>
+                                            <TextBlock TextWrapping="Wrap">
+                                                <Run Text="中文: " FontWeight="SemiBold"/>
+                                                <Run Text="{Binding ExplanationCn}"/>
+                                            </TextBlock>
+                                            <TextBlock TextWrapping="Wrap" Margin="10,5,0,0">
+                                                <Run Text="Example: " FontWeight="SemiBold" FontStyle="Italic"/>
+                                                <Run Text="{Binding ExampleEn}" FontStyle="Italic"/>
+                                            </TextBlock>
+                                            <TextBlock TextWrapping="Wrap" Margin="10,0,0,0">
+                                                <Run Text="例句: " FontWeight="SemiBold" FontStyle="Italic"/>
+                                                <Run Text="{Binding ExampleCn}" FontStyle="Italic"/>
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+
+                <!-- Comparisons -->
+                <Border BorderBrush="LightGray" BorderThickness="1" Padding="15" CornerRadius="5"
+                        IsVisible="{Binding CurrentDefinition.Comparison.Count}">
+                    <StackPanel Spacing="10">
+                        <TextBlock Text="Similar Words Comparison" FontSize="18" FontWeight="SemiBold"/>
+                        <ItemsControl ItemsSource="{Binding CurrentDefinition.Comparison}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border BorderBrush="LightGray" BorderThickness="0,0,0,1" Padding="10" Margin="0,5">
+                                        <StackPanel Spacing="5">
+                                            <TextBlock Text="{Binding WordToCompare}" FontWeight="SemiBold" FontSize="16" Foreground="DarkGreen"/>
+                                            <TextBlock Text="{Binding Analysis}" TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
 </Window>
