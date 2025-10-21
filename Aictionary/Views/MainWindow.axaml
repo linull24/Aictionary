@@ -22,11 +22,35 @@
         <vm:MainWindowViewModel/>
     </Design.DataContext>
 
-    <Grid Margin="20" RowDefinitions="Auto,*">
+    <Grid RowDefinitions="Auto,*">
         <!-- Search Section -->
-        <StackPanel Grid.Row="0" Spacing="10">
+        <StackPanel Margin="20, 20, 20, 0" Grid.Row="0" Spacing="10">
             <Grid ColumnDefinitions="*,Auto">
-                <TextBlock Grid.Column="0" Text="Aictionary" FontSize="24" FontWeight="Bold" HorizontalAlignment="Center"/>
+                <!-- Aictionary Header (shown when no word is searched) -->
+                <TextBlock Grid.Column="0"
+                           Text="Aictionary"
+                           FontSize="32"
+                           FontWeight="Bold"
+                           HorizontalAlignment="Center"
+                           IsVisible="{Binding CurrentDefinition.Word, Converter={x:Static StringConverters.IsNullOrEmpty}}"/>
+
+                <!-- Word and Pronunciation (shown when word is searched) -->
+                <StackPanel Grid.Column="0"
+                            Orientation="Horizontal"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            IsVisible="{Binding CurrentDefinition.Word, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                    <SelectableTextBlock Text="{Binding CurrentDefinition.Word}"
+                                         FontSize="32"
+                                         FontWeight="Bold"
+                                         VerticalAlignment="Center"/>
+                    <SelectableTextBlock Text="{Binding CurrentDefinition.Pronunciation}"
+                                         FontSize="18"
+                                         Foreground="Gray"
+                                         VerticalAlignment="Center"
+                                         Margin="10,0,0,0"/>
+                </StackPanel>
+
                 <Button Grid.Column="1"
                         Command="{Binding OpenSettingsCommand}"
                         Padding="10"
@@ -65,36 +89,46 @@
         </StackPanel>
 
         <!-- Definition Display -->
-        <ScrollViewer Grid.Row="1" Margin="0,20,0,0" IsVisible="{Binding CurrentDefinition, Converter={x:Static ObjectConverters.IsNotNull}}">
-            <StackPanel Spacing="15">
-                <!-- Word and Pronunciation -->
-                <StackPanel>
-                    <SelectableTextBlock Text="{Binding CurrentDefinition.Word}" FontSize="32" FontWeight="Bold"/>
-                    <SelectableTextBlock Text="{Binding CurrentDefinition.Pronunciation}" FontSize="18" Foreground="Gray"/>
-                    <SelectableTextBlock Text="{Binding CurrentDefinition.ConciseDefinition}"
-                                         FontSize="16"
-                                         Margin="0,5,0,0"
-                                         TextWrapping="Wrap"/>
-                </StackPanel>
+        <ScrollViewer Grid.Row="1" Margin="20,20,0,20"  IsVisible="{Binding CurrentDefinition, Converter={x:Static ObjectConverters.IsNotNull}}">
+            <StackPanel Spacing="15" Margin="0,0,20,0">
+                
 
-                <!-- Word Forms -->
-                <Border BorderBrush="LightGray" BorderThickness="1" Padding="15" CornerRadius="5"
-                        IsVisible="{Binding CurrentDefinition.Forms.Count}">
-                    <StackPanel Spacing="5">
-                        <TextBlock Text="Word Forms" FontSize="18" FontWeight="SemiBold"/>
-                        <ItemsControl ItemsSource="{Binding CurrentDefinition.Forms}" Margin="10,5,0,0">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <SelectableTextBlock Margin="0,3">
-                                        <Run Text="{Binding Key, Converter={StaticResource FormNameConverter}, Mode=OneWay}" FontWeight="SemiBold"/>
-                                        <Run Text=": "/>
-                                        <Run Text="{Binding Value, Mode=OneWay}"/>
-                                    </SelectableTextBlock>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </StackPanel>
-                </Border>
+                <!-- Concise Definition and Word Forms -->
+                <Grid ColumnDefinitions="*,Auto">
+                    <!-- Concise Definition -->
+                    <Border Grid.Column="0" BorderBrush="LightGray" BorderThickness="1" Padding="15" CornerRadius="5" Margin="0,0,15,0">
+                        <StackPanel Spacing="5">
+                            <TextBlock Text="Concise Definition" FontSize="18" FontWeight="SemiBold"/>
+                            <SelectableTextBlock Text="{Binding CurrentDefinition.ConciseDefinition}"
+                                                 FontSize="16"
+                                                 TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Word Forms -->
+                    <Border Grid.Column="1"
+                            BorderBrush="LightGray"
+                            BorderThickness="1"
+                            Padding="15"
+                            CornerRadius="5"
+                            MinWidth="250"
+                            IsVisible="{Binding CurrentDefinition.Forms.Count}">
+                        <StackPanel Spacing="5">
+                            <TextBlock Text="Word Forms" FontSize="18" FontWeight="SemiBold"/>
+                            <ItemsControl ItemsSource="{Binding CurrentDefinition.Forms}" Margin="10,5,0,0">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <SelectableTextBlock Margin="0,3">
+                                            <Run Text="{Binding Key, Converter={StaticResource FormNameConverter}, Mode=OneWay}" FontWeight="SemiBold"/>
+                                            <Run Text=": "/>
+                                            <Run Text="{Binding Value, Mode=OneWay}"/>
+                                        </SelectableTextBlock>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+                </Grid>
 
                 <!-- Definitions -->
                 <Border BorderBrush="LightGray" BorderThickness="1" Padding="15" CornerRadius="5">
