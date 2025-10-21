@@ -17,7 +17,17 @@
     <Grid Margin="20" RowDefinitions="Auto,*">
         <!-- Search Section -->
         <StackPanel Grid.Row="0" Spacing="10">
-            <TextBlock Text="Aictionary" FontSize="24" FontWeight="Bold" HorizontalAlignment="Center"/>
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Grid.Column="0" Text="Aictionary" FontSize="24" FontWeight="Bold" HorizontalAlignment="Center"/>
+                <Button Grid.Column="1"
+                        Content="⚙"
+                        Command="{Binding OpenSettingsCommand}"
+                        FontSize="20"
+                        Padding="10"
+                        ToolTip.Tip="Settings"
+                        Background="Transparent"
+                        BorderThickness="0"/>
+            </Grid>
             <Grid ColumnDefinitions="*,Auto">
                 <TextBox Grid.Column="0"
                          Text="{Binding SearchText}"

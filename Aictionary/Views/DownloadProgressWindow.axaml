@@ -1,0 +1,44 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Aictionary.ViewModels"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="500" d:DesignHeight="200"
+        x:Class="Aictionary.Views.DownloadProgressWindow"
+        x:DataType="vm:DownloadProgressViewModel"
+        Title="Downloading Dictionary"
+        Width="500" Height="200"
+        CanResize="False"
+        WindowStartupLocation="CenterScreen">
+
+    <Design.DataContext>
+        <vm:DownloadProgressViewModel/>
+    </Design.DataContext>
+
+    <Grid Margin="30" RowDefinitions="Auto,Auto,*">
+        <TextBlock Grid.Row="0"
+                   Text="Dictionary Download"
+                   FontSize="20"
+                   FontWeight="Bold"
+                   Margin="0,0,0,20"/>
+
+        <TextBlock Grid.Row="1"
+                   Text="{Binding StatusMessage}"
+                   FontSize="14"
+                   TextWrapping="Wrap"
+                   Margin="0,0,0,15"/>
+
+        <StackPanel Grid.Row="2" Spacing="15">
+            <ProgressBar IsIndeterminate="{Binding IsIndeterminate}"
+                         Value="{Binding Progress}"
+                         Maximum="100"
+                         Height="8"/>
+
+            <Button Content="Close"
+                    IsVisible="{Binding IsCompleted}"
+                    HorizontalAlignment="Right"
+                    Padding="20,8"
+                    Click="CloseButton_Click"/>
+        </StackPanel>
+    </Grid>
+</Window>

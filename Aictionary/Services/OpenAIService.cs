@@ -1,23 +1,51 @@
 using System;
+using System.ClientModel;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Aictionary.Models;
+using OpenAI;
 using OpenAI.Chat;
 
 namespace Aictionary.Services;
 
 public class OpenAIService : IOpenAIService
 {
-    private readonly ChatClient _chatClient;
+    private readonly ISettingsService _settingsService;
     private readonly JsonSerializerOptions _jsonOptions;
 
-    public OpenAIService(string apiKey, string model = "gpt-4o-mini")
+    public OpenAIService(ISettingsService settingsService)
     {
-        _chatClient = new ChatClient(model, apiKey);
+        _settingsService = settingsService;
         _jsonOptions = new JsonSerializerOptions
         {
             PropertyNameCaseInsensitive = true
         };
+    }
+
+    private ChatClient CreateChatClient()
+    {
+        var settings = _settingsService.CurrentSettings;
+        var apiKey = settings.ApiKey;
+        var model = settings.Model;
+
+        if (string.IsNullOrEmpty(apiKey))
+        {
+            throw new InvalidOperationException("OpenAI API key is not configured. Please set it in Settings.");
+        }
+
+        // Create OpenAI client with custom endpoint if specified
+        if (!string.IsNullOrEmpty(settings.ApiBaseUrl) &&
+            settings.ApiBaseUrl != "https://api.openai.com/v1")
+        {
+            var options = new OpenAIClientOptions
+            {
+                Endpoint = new Uri(settings.ApiBaseUrl)
+            };
+            var client = new OpenAIClient(new ApiKeyCredential(apiKey), options);
+            return client.GetChatClient(model);
+        }
+
+        return new ChatClient(model, apiKey);
     }
 
     public async Task<WordDefinition?> GenerateDefinitionAsync(string word)
@@ -27,6 +55,8 @@ public class OpenAIService : IOpenAIService
 
         try
         {
+            var chatClient = CreateChatClient();
+
             var prompt = $@"Please provide a comprehensive definition for the word ""{word}"" in the following JSON format:
 {{
   ""word"": ""{word}"",
@@ -57,7 +87,7 @@ public class OpenAIService : IOpenAIService
 
 Please provide at least 2-3 different definitions if the word has multiple meanings, and 2-3 similar words for comparison. Ensure all fields are filled appropriately. Return ONLY the JSON, no additional text.";
 
-            var completion = await _chatClient.CompleteChatAsync(prompt);
+            var completion = await chatClient.CompleteChatAsync(prompt);
             var response = completion.Value.Content[0].Text;
 
             // Try to extract JSON if there's markdown code block
