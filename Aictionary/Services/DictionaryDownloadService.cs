@@ -39,6 +39,7 @@ public class DictionaryDownloadService : IDictionaryDownloadService
         if (Directory.Exists(dictionaryPath))
         {
             Console.WriteLine("[DictionaryDownloadService] Dictionary already exists, skipping download");
+            progressCallback?.Invoke("Dictionary already exists. No download needed.", 100);
             return;
         }
 

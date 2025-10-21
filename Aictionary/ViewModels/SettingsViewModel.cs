@@ -1,6 +1,6 @@
 using System;
-using System.Collections.ObjectModel;
 using System.Reactive;
+using System.Reactive.Linq;
 using System.Threading.Tasks;
 using Aictionary.Models;
 using Aictionary.Services;
@@ -17,8 +17,6 @@ public class SettingsViewModel : ViewModelBase
     private string _apiKey = string.Empty;
     private string _model = string.Empty;
     private string _dictionaryPath = string.Empty;
-    private ObservableCollection<string> _cachedWords = new();
-    private string? _selectedWord;
     private string _statusMessage = string.Empty;
 
     public SettingsViewModel(ISettingsService settingsService, IDictionaryService dictionaryService)
@@ -26,16 +24,21 @@ public class SettingsViewModel : ViewModelBase
         _settingsService = settingsService;
         _dictionaryService = dictionaryService;
 
-        SaveCommand = ReactiveCommand.CreateFromTask(SaveSettingsAsync);
-        LoadCachedWordsCommand = ReactiveCommand.CreateFromTask(LoadCachedWordsAsync);
-        DeleteSelectedWordCommand = ReactiveCommand.CreateFromTask(
-            DeleteSelectedWordAsync,
-            this.WhenAnyValue(x => x.SelectedWord, word => !string.IsNullOrWhiteSpace(word))
-        );
-        BrowseDictionaryPathCommand = ReactiveCommand.Create(BrowseDictionaryPath);
         DownloadDictionaryCommand = ReactiveCommand.CreateFromTask(DownloadDictionaryAsync);
 
         LoadSettings();
+
+        // Auto-save settings when any property changes
+        this.WhenAnyValue(
+            x => x.ApiBaseUrl,
+            x => x.ApiKey,
+            x => x.Model,
+            x => x.DictionaryPath
+        )
+        .Skip(1) // Skip the initial load
+        .Throttle(TimeSpan.FromMilliseconds(500)) // Debounce to avoid saving too frequently
+        .ObserveOn(RxApp.TaskpoolScheduler)
+        .Subscribe(async _ => await AutoSaveSettingsAsync());
     }
 
     public string ApiBaseUrl
@@ -62,28 +65,12 @@ public class SettingsViewModel : ViewModelBase
         set => this.RaiseAndSetIfChanged(ref _dictionaryPath, value);
     }
 
-    public ObservableCollection<string> CachedWords
-    {
-        get => _cachedWords;
-        set => this.RaiseAndSetIfChanged(ref _cachedWords, value);
-    }
-
-    public string? SelectedWord
-    {
-        get => _selectedWord;
-        set => this.RaiseAndSetIfChanged(ref _selectedWord, value);
-    }
-
     public string StatusMessage
     {
         get => _statusMessage;
         set => this.RaiseAndSetIfChanged(ref _statusMessage, value);
     }
 
-    public ReactiveCommand<Unit, Unit> SaveCommand { get; }
-    public ReactiveCommand<Unit, Unit> LoadCachedWordsCommand { get; }
-    public ReactiveCommand<Unit, Unit> DeleteSelectedWordCommand { get; }
-    public ReactiveCommand<Unit, Unit> BrowseDictionaryPathCommand { get; }
     public ReactiveCommand<Unit, Unit> DownloadDictionaryCommand { get; }
 
     private void LoadSettings()
@@ -95,7 +82,7 @@ public class SettingsViewModel : ViewModelBase
         DictionaryPath = settings.DictionaryPath;
     }
 
-    private async Task SaveSettingsAsync()
+    private async Task AutoSaveSettingsAsync()
     {
         try
         {
@@ -108,62 +95,11 @@ public class SettingsViewModel : ViewModelBase
             };
 
             await _settingsService.SaveSettingsAsync(settings);
-            StatusMessage = "Settings saved successfully!";
         }
         catch (Exception ex)
         {
-            StatusMessage = $"Error saving settings: {ex.Message}";
+            System.Console.WriteLine($"[SettingsViewModel] Auto-save ERROR: {ex.Message}");
         }
-    }
-
-    private async Task LoadCachedWordsAsync()
-    {
-        try
-        {
-            var words = await _dictionaryService.GetCachedWordsAsync();
-            CachedWords.Clear();
-            foreach (var word in words)
-            {
-                CachedWords.Add(word);
-            }
-            StatusMessage = $"Loaded {words.Count} cached words.";
-        }
-        catch (Exception ex)
-        {
-            StatusMessage = $"Error loading cached words: {ex.Message}";
-        }
-    }
-
-    private async Task DeleteSelectedWordAsync()
-    {
-        if (string.IsNullOrWhiteSpace(SelectedWord))
-            return;
-
-        try
-        {
-            var success = await _dictionaryService.DeleteCachedWordAsync(SelectedWord);
-            if (success)
-            {
-                CachedWords.Remove(SelectedWord);
-                StatusMessage = $"Deleted '{SelectedWord}' from cache.";
-                SelectedWord = null;
-            }
-            else
-            {
-                StatusMessage = $"Failed to delete '{SelectedWord}'.";
-            }
-        }
-        catch (Exception ex)
-        {
-            StatusMessage = $"Error deleting word: {ex.Message}";
-        }
-    }
-
-    private void BrowseDictionaryPath()
-    {
-        // This would typically open a folder browser dialog
-        // For now, it's a placeholder
-        StatusMessage = "Folder browser not yet implemented. Please edit the path manually.";
     }
 
     private async Task DownloadDictionaryAsync()
