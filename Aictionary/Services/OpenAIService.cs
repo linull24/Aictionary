@@ -64,6 +64,7 @@ public class OpenAIService : IOpenAIService
             System.Console.WriteLine($"[OpenAI] GenerateDefinition START for word: '{word}'");
 
             var chatClient = CreateChatClient();
+            
             System.Console.WriteLine("[OpenAI] ChatClient created successfully");
 
             var prompt = """

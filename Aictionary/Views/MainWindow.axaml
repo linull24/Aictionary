@@ -31,13 +31,13 @@
                            Text="Aictionary"
                            FontSize="32"
                            FontWeight="Bold"
-                           HorizontalAlignment="Center"
+                           HorizontalAlignment="Left"
                            IsVisible="{Binding CurrentDefinition.Word, Converter={x:Static StringConverters.IsNullOrEmpty}}"/>
 
                 <!-- Word and Pronunciation (shown when word is searched) -->
                 <StackPanel Grid.Column="0"
                             Orientation="Horizontal"
-                            HorizontalAlignment="Center"
+                            HorizontalAlignment="Left"
                             VerticalAlignment="Center"
                             IsVisible="{Binding CurrentDefinition.Word, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
                     <SelectableTextBlock Text="{Binding CurrentDefinition.Word}"
@@ -57,14 +57,12 @@
                             Spacing="5">
                     <Button Command="{Binding OpenStatisticsCommand}"
                             Padding="10"
-                            ToolTip.Tip="Statistics"
                             Background="Transparent"
                             BorderThickness="0">
                         <lucide:PackIconLucide Kind="ChartBar" Width="24" Height="24" />
                     </Button>
                     <Button Command="{Binding OpenSettingsCommand}"
                             Padding="10"
-                            ToolTip.Tip="Settings"
                             Background="Transparent"
                             BorderThickness="0">
                         <lucide:PackIconLucide Kind="Settings" Width="24" Height="24" />
