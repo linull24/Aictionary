@@ -3,6 +3,8 @@
         xmlns:vm="using:Aictionary.ViewModels"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:iconPacks="clr-namespace:IconPacks.Avalonia;assembly=IconPacks.Avalonia"
+        xmlns:lucide="https://github.com/MahApps/IconPacks.Avalonia"
         mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="700"
         x:Class="Aictionary.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
@@ -20,13 +22,13 @@
             <Grid ColumnDefinitions="*,Auto">
                 <TextBlock Grid.Column="0" Text="Aictionary" FontSize="24" FontWeight="Bold" HorizontalAlignment="Center"/>
                 <Button Grid.Column="1"
-                        Content="⚙"
                         Command="{Binding OpenSettingsCommand}"
-                        FontSize="20"
                         Padding="10"
                         ToolTip.Tip="Settings"
                         Background="Transparent"
-                        BorderThickness="0"/>
+                        BorderThickness="0">
+                    <lucide:PackIconLucide Kind="Settings" Width="24" Height="24"/>
+                </Button>
             </Grid>
             <Grid ColumnDefinitions="*,Auto">
                 <TextBox Grid.Column="0"

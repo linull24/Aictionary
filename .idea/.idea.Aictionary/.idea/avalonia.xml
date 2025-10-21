@@ -6,6 +6,7 @@
         <entry key="Aictionary/App.axaml" value="Aictionary/Aictionary.csproj" />
         <entry key="Aictionary/Views/DownloadProgressWindow.axaml" value="Aictionary/Aictionary.csproj" />
         <entry key="Aictionary/Views/MainWindow.axaml" value="Aictionary/Aictionary.csproj" />
+        <entry key="Aictionary/Views/SettingsWindow.axaml" value="Aictionary/Aictionary.csproj" />
       </map>
     </option>
   </component>
