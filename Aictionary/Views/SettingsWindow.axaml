@@ -79,7 +79,7 @@
                     <StackPanel Spacing="15" Margin="15">
                         <StackPanel Spacing="5">
                             <TextBlock Text="Dictionary Path" FontWeight="SemiBold"/>
-                            <Grid ColumnDefinitions="*,Auto,Auto,Auto">
+                            <Grid ColumnDefinitions="*,Auto">
                                 <TextBox Grid.Column="0"
                                          Text="{Binding DictionaryPath}"
                                          Watermark="Path to dictionary folder"/>
@@ -87,24 +87,52 @@
                                         Content="Browse"
                                         Click="BrowseDictionaryButton_Click"
                                         Margin="10,0,0,0"
-                                        Padding="15,5"/>
-                                <Button Grid.Column="2"
-                                        Content="Open"
-                                        Click="OpenDictionaryButton_Click"
-                                        Margin="5,0,0,0"
-                                        Padding="15,5"/>
-                                <Button Grid.Column="3"
-                                        Content="Reset"
-                                        Click="ResetDictionaryButton_Click"
-                                        Margin="5,0,0,0"
-                                        Padding="15,5"/>
+                                        Width="80"
+                                        HorizontalContentAlignment="Center"
+                                        />
                             </Grid>
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="5" Margin="0,5,0,0">
+                                <Button Content="Open"
+                                        Click="OpenDictionaryButton_Click"
+                                        Width="80"
+                                        HorizontalContentAlignment="Center"
+                                        />
+                                <Button Content="Reset"
+                                        Click="ResetDictionaryButton_Click"
+                                        HorizontalContentAlignment="Center"
+                                        Width="80"
+                                        />
+                            </StackPanel>
                         </StackPanel>
 
-                        <Button Content="Download Dictionary"
-                                Command="{Binding DownloadDictionaryCommand}"
-                                Padding="15,8"
-                                HorizontalAlignment="Left"/>
+                        <StackPanel Spacing="5">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Grid.Column="0" Text="Words list" FontWeight="SemiBold"/>
+                                <Button Grid.Column="1"
+                                        Content="Refresh"
+                                        Command="{Binding RefreshCachedWordsCommand}"
+                                        IsEnabled="{Binding !IsLoadingCachedWords}"
+                                        Width="80"
+                                        HorizontalContentAlignment="Center"/>
+                            </Grid>
+                            <TextBox Text="{Binding SearchText}"
+                                     Watermark="Search words..."
+                                     Margin="0,5,0,0"/>
+                            <ListBox ItemsSource="{Binding FilteredCachedWords}"
+                                     Height="200"
+                                     Background="Transparent"
+                                     CornerRadius="5"
+                                     BorderThickness="1"/>
+                            <ProgressBar IsIndeterminate="True"
+                                         HorizontalAlignment="Stretch"
+                                         IsVisible="{Binding IsLoadingCachedWords}"
+                                         Height="4"/>
+                            <Button Content="Download Dictionary"
+                                    Command="{Binding DownloadDictionaryCommand}"
+                                    Padding="15,8"
+                                    HorizontalAlignment="Left"
+                                    Margin="0,5,0,0"/>
+                        </StackPanel>
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>

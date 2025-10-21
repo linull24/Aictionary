@@ -25,8 +25,12 @@ public class SettingsViewModel : ViewModelBase
     private string _statusMessage = string.Empty;
     private bool _isApiKeyVisible = false;
     private bool _isLoadingModels = false;
+    private string _searchText = string.Empty;
+    private bool _isLoadingCachedWords = false;
 
     private readonly ObservableCollection<string> _availableModels = new();
+    private readonly ObservableCollection<string> _cachedWords = new();
+    private readonly ObservableCollection<string> _filteredCachedWords = new();
 
     public SettingsViewModel(ISettingsService settingsService, IDictionaryService dictionaryService, IOpenAIService openAIService)
     {
@@ -37,8 +41,15 @@ public class SettingsViewModel : ViewModelBase
         DownloadDictionaryCommand = ReactiveCommand.CreateFromTask(DownloadDictionaryAsync);
         RefreshModelsCommand = ReactiveCommand.CreateFromTask(RefreshModelsAsync);
         ToggleApiKeyVisibilityCommand = ReactiveCommand.Create(ToggleApiKeyVisibility);
+        RefreshCachedWordsCommand = ReactiveCommand.CreateFromTask(RefreshCachedWordsAsync);
 
         LoadSettings();
+
+        // Auto-load cached words on startup
+        _ = Task.Run(async () =>
+        {
+            await RefreshCachedWordsAsync();
+        });
 
         // Initialize available models with current model if it exists
         if (!string.IsNullOrEmpty(Model))
@@ -125,9 +136,29 @@ public class SettingsViewModel : ViewModelBase
 
     public ObservableCollection<string> AvailableModels => _availableModels;
 
+    public string SearchText
+    {
+        get => _searchText;
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _searchText, value);
+            FilterCachedWords();
+        }
+    }
+
+    public bool IsLoadingCachedWords
+    {
+        get => _isLoadingCachedWords;
+        set => this.RaiseAndSetIfChanged(ref _isLoadingCachedWords, value);
+    }
+
+    public ObservableCollection<string> CachedWords => _cachedWords;
+    public ObservableCollection<string> FilteredCachedWords => _filteredCachedWords;
+
     public ReactiveCommand<Unit, Unit> DownloadDictionaryCommand { get; }
     public ReactiveCommand<Unit, Unit> RefreshModelsCommand { get; }
     public ReactiveCommand<Unit, Unit> ToggleApiKeyVisibilityCommand { get; }
+    public ReactiveCommand<Unit, Unit> RefreshCachedWordsCommand { get; }
 
     private void LoadSettings()
     {
@@ -274,5 +305,44 @@ public class SettingsViewModel : ViewModelBase
     private void ToggleApiKeyVisibility()
     {
         IsApiKeyVisible = !IsApiKeyVisible;
+    }
+
+    private async Task RefreshCachedWordsAsync()
+    {
+        try
+        {
+            IsLoadingCachedWords = true;
+
+            var words = await _dictionaryService.GetCachedWordsAsync();
+
+            _cachedWords.Clear();
+            _cachedWords.AddRange(words);
+
+            FilterCachedWords();
+        }
+        catch (Exception ex)
+        {
+            System.Console.WriteLine($"[SettingsViewModel] Error loading cached words: {ex.Message}");
+        }
+        finally
+        {
+            IsLoadingCachedWords = false;
+        }
+    }
+
+    private void FilterCachedWords()
+    {
+        _filteredCachedWords.Clear();
+
+        if (string.IsNullOrWhiteSpace(SearchText))
+        {
+            _filteredCachedWords.AddRange(_cachedWords);
+        }
+        else
+        {
+            var filtered = _cachedWords.Where(word =>
+                word.Contains(SearchText, StringComparison.OrdinalIgnoreCase));
+            _filteredCachedWords.AddRange(filtered);
+        }
     }
 }
