@@ -5,6 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:iconPacks="clr-namespace:IconPacks.Avalonia;assembly=IconPacks.Avalonia"
         xmlns:lucide="https://github.com/MahApps/IconPacks.Avalonia"
+        xmlns:behaviors="using:Aictionary.Behaviors"
         mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="700"
         x:Class="Aictionary.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
@@ -27,7 +28,7 @@
                         ToolTip.Tip="Settings"
                         Background="Transparent"
                         BorderThickness="0">
-                    <lucide:PackIconLucide Kind="Settings" Width="24" Height="24"/>
+                    <lucide:PackIconLucide Kind="Settings" Width="24" Height="24" />
                 </Button>
             </Grid>
             <Grid ColumnDefinitions="*,Auto">
@@ -35,7 +36,11 @@
                          Text="{Binding SearchText}"
                          Watermark="Enter a word to search..."
                          FontSize="16"
-                         Padding="10"/>
+                         Padding="10">
+                    <TextBox.KeyBindings>
+                        <KeyBinding Command="{Binding SearchCommand}" Gesture="Enter" />
+                    </TextBox.KeyBindings>
+                </TextBox>
                 <Button Grid.Column="1"
                         Content="Search"
                         Command="{Binding SearchCommand}"
@@ -59,9 +64,12 @@
             <StackPanel Spacing="15">
                 <!-- Word and Pronunciation -->
                 <StackPanel>
-                    <TextBlock Text="{Binding CurrentDefinition.Word}" FontSize="32" FontWeight="Bold"/>
-                    <TextBlock Text="{Binding CurrentDefinition.Pronunciation}" FontSize="18" Foreground="Gray"/>
-                    <TextBlock Text="{Binding CurrentDefinition.ConciseDefinition}" FontSize="16" Margin="0,5,0,0" TextWrapping="Wrap"/>
+                    <SelectableTextBlock Text="{Binding CurrentDefinition.Word}" FontSize="32" FontWeight="Bold"/>
+                    <SelectableTextBlock Text="{Binding CurrentDefinition.Pronunciation}" FontSize="18" Foreground="Gray"/>
+                    <SelectableTextBlock Text="{Binding CurrentDefinition.ConciseDefinition}"
+                                         FontSize="16"
+                                         Margin="0,5,0,0"
+                                         TextWrapping="Wrap"/>
                 </StackPanel>
 
                 <!-- Word Forms -->
@@ -70,22 +78,22 @@
                     <StackPanel Spacing="5">
                         <TextBlock Text="Word Forms" FontSize="18" FontWeight="SemiBold"/>
                         <StackPanel Spacing="3" Margin="10,5,0,0">
-                            <TextBlock IsVisible="{Binding CurrentDefinition.Forms.ThirdPersonSingular, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                            <SelectableTextBlock IsVisible="{Binding CurrentDefinition.Forms.ThirdPersonSingular, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
                                 <Run Text="Third Person Singular: " FontWeight="SemiBold"/>
                                 <Run Text="{Binding CurrentDefinition.Forms.ThirdPersonSingular}"/>
-                            </TextBlock>
-                            <TextBlock IsVisible="{Binding CurrentDefinition.Forms.PastTense, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                            </SelectableTextBlock>
+                            <SelectableTextBlock IsVisible="{Binding CurrentDefinition.Forms.PastTense, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
                                 <Run Text="Past Tense: " FontWeight="SemiBold"/>
                                 <Run Text="{Binding CurrentDefinition.Forms.PastTense}"/>
-                            </TextBlock>
-                            <TextBlock IsVisible="{Binding CurrentDefinition.Forms.PastParticiple, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                            </SelectableTextBlock>
+                            <SelectableTextBlock IsVisible="{Binding CurrentDefinition.Forms.PastParticiple, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
                                 <Run Text="Past Participle: " FontWeight="SemiBold"/>
                                 <Run Text="{Binding CurrentDefinition.Forms.PastParticiple}"/>
-                            </TextBlock>
-                            <TextBlock IsVisible="{Binding CurrentDefinition.Forms.PresentParticiple, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                            </SelectableTextBlock>
+                            <SelectableTextBlock IsVisible="{Binding CurrentDefinition.Forms.PresentParticiple, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
                                 <Run Text="Present Participle: " FontWeight="SemiBold"/>
                                 <Run Text="{Binding CurrentDefinition.Forms.PresentParticiple}"/>
-                            </TextBlock>
+                            </SelectableTextBlock>
                         </StackPanel>
                     </StackPanel>
                 </Border>
@@ -99,23 +107,23 @@
                                 <DataTemplate>
                                     <Border BorderBrush="LightGray" BorderThickness="0,0,0,1" Padding="10,10,10,15" Margin="0,5">
                                         <StackPanel Spacing="5">
-                                            <TextBlock Text="{Binding Pos}" FontWeight="SemiBold" FontStyle="Italic" Foreground="DarkBlue"/>
-                                            <TextBlock TextWrapping="Wrap">
+                                            <SelectableTextBlock Text="{Binding Pos}" FontWeight="SemiBold" FontStyle="Italic" Foreground="DarkBlue"/>
+                                            <SelectableTextBlock TextWrapping="Wrap">
                                                 <Run Text="English: " FontWeight="SemiBold"/>
                                                 <Run Text="{Binding ExplanationEn}"/>
-                                            </TextBlock>
-                                            <TextBlock TextWrapping="Wrap">
+                                            </SelectableTextBlock>
+                                            <SelectableTextBlock TextWrapping="Wrap">
                                                 <Run Text="中文: " FontWeight="SemiBold"/>
                                                 <Run Text="{Binding ExplanationCn}"/>
-                                            </TextBlock>
-                                            <TextBlock TextWrapping="Wrap" Margin="10,5,0,0">
+                                            </SelectableTextBlock>
+                                            <SelectableTextBlock TextWrapping="Wrap" Margin="10,5,0,0">
                                                 <Run Text="Example: " FontWeight="SemiBold" FontStyle="Italic"/>
                                                 <Run Text="{Binding ExampleEn}" FontStyle="Italic"/>
-                                            </TextBlock>
-                                            <TextBlock TextWrapping="Wrap" Margin="10,0,0,0">
+                                            </SelectableTextBlock>
+                                            <SelectableTextBlock TextWrapping="Wrap" Margin="10,0,0,0">
                                                 <Run Text="例句: " FontWeight="SemiBold" FontStyle="Italic"/>
                                                 <Run Text="{Binding ExampleCn}" FontStyle="Italic"/>
-                                            </TextBlock>
+                                            </SelectableTextBlock>
                                         </StackPanel>
                                     </Border>
                                 </DataTemplate>
@@ -134,8 +142,13 @@
                                 <DataTemplate>
                                     <Border BorderBrush="LightGray" BorderThickness="0,0,0,1" Padding="10" Margin="0,5">
                                         <StackPanel Spacing="5">
-                                            <TextBlock Text="{Binding WordToCompare}" FontWeight="SemiBold" FontSize="16" Foreground="DarkGreen"/>
-                                            <TextBlock Text="{Binding Analysis}" TextWrapping="Wrap"/>
+                                            <SelectableTextBlock Text="{Binding WordToCompare}"
+                                                                 FontWeight="SemiBold"
+                                                                 FontSize="16"
+                                                                 Foreground="DarkGreen"
+                                                                 behaviors:WordJumpBehavior.IsEnabled="True"/>
+                                            <SelectableTextBlock Text="{Binding Analysis}"
+                                                                 TextWrapping="Wrap"/>
                                         </StackPanel>
                                     </Border>
                                 </DataTemplate>
