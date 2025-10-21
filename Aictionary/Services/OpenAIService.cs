@@ -54,23 +54,29 @@ public class OpenAIService : IOpenAIService
     public async Task<WordDefinition?> GenerateDefinitionAsync(string word)
     {
         if (string.IsNullOrWhiteSpace(word))
+        {
+            System.Console.WriteLine("[OpenAI] GenerateDefinition - Word is null or whitespace");
             return null;
+        }
 
         try
         {
+            System.Console.WriteLine($"[OpenAI] GenerateDefinition START for word: '{word}'");
+
             var chatClient = CreateChatClient();
-            
+            System.Console.WriteLine("[OpenAI] ChatClient created successfully");
+
             var prompt = """
                          你是一位严谨的双语词典编纂专家。你的任务是为一个给定的英语单词及其近义词生成一份详细的中文解释，并以严格的 JSON 格式输出。
-                         
+
                          请精确遵循下面范例中提供的结构和内容深度。
-                         
+
                          ---
                          ### 范例 1
-                         
+
                          **用户输入:**
                          example
-                         
+
                          **模型输出:**
                          {
                            "word": "example",
@@ -98,26 +104,26 @@ public class OpenAIService : IOpenAIService
                            "comparison": [
                              {
                                "word_to_compare": "sample",
-                               "analysis": "“Sample” (样本) 侧重于从一个整体中取出的一小部分，用以展示整体的质量、风格或特性。它强调“代表性”。例如，布料的样品、产品的试用装。而 “example” 是为了“说明”一个概念或规则，不一定来自一个更大的实体。"
+                               "analysis": ""Sample" (样本) 侧重于从一个整体中取出的一小部分，用以展示整体的质量、风格或特性。它强调"代表性"。例如，布料的样品、产品的试用装。而 "example" 是为了"说明"一个概念或规则，不一定来自一个更大的实体。"
                              },
                              {
                                "word_to_compare": "illustration",
-                               "analysis": "“Illustration” (图解/例证) 强调“视觉化”或“形象化”地解释说明。它可以是一个图片、图表，也可以是一个生动的故事，目的是让抽象的概念变得具体易懂。它的解释功能比 “example” 更强、更形象。"
+                               "analysis": ""Illustration" (图解/例证) 强调"视觉化"或"形象化"地解释说明。它可以是一个图片、图表，也可以是一个生动的故事，目的是让抽象的概念变得具体易懂。它的解释功能比 "example" 更强、更形象。"
                              },
                              {
                                "word_to_compare": "instance",
-                               "analysis": "“Instance” (实例) 与 “example” 非常接近，常可互换，但 “instance” 更侧重于指一个具体“事件”或“情况”的发生，作为某个现象存在的证据。它比 “example” 更具客观性和事实性，常用于比较正式的论述中。"
+                               "analysis": ""Instance" (实例) 与 "example" 非常接近，常可互换，但 "instance" 更侧重于指一个具体"事件"或"情况"的发生，作为某个现象存在的证据。它比 "example" 更具客观性和事实性，常用于比较正式的论述中。"
                              }
                            ]
                          }
-                         
+
                          ---
-                         
+
                          ### 范例2
-                         
+
                          **用户输入:**
                          develop
-                         
+
                          **模型输出:**
                          {
                            "word": "develop",
@@ -155,23 +161,23 @@ public class OpenAIService : IOpenAIService
                            "comparison": [
                              {
                                "word_to_compare": "evolve",
-                               "analysis": "“Evolve” (演变/进化) 强调一个长期的、渐进的、通常是自发的自然变化过程，从简单的形态向更复杂的形态发展。它常用于生物进化或社会、思想的长期演变。而 “develop” 通常暗示了有意识的努力和规划。"
+                               "analysis": ""Evolve" (演变/进化) 强调一个长期的、渐进的、通常是自发的自然变化过程，从简单的形态向更复杂的形态发展。它常用于生物进化或社会、思想的长期演变。而 "develop" 通常暗示了有意识的努力和规划。"
                              },
                              {
                                "word_to_compare": "grow",
-                               "analysis": "“Grow” (生长/增长) 主要指尺寸、数量或程度上的增加，可以是自然的（如植物生长），也可以是抽象的（如信心增长）。“Develop” 更侧重于内在结构、能力或复杂性的提升，是质变，而 “grow” 更偏向于量变。"
+                               "analysis": ""Grow" (生长/增长) 主要指尺寸、数量或程度上的增加，可以是自然的（如植物生长），也可以是抽象的（如信心增长）。"Develop" 更侧重于内在结构、能力或复杂性的提升，是质变，而 "grow" 更偏向于量变。"
                              },
                              {
                                "word_to_compare": "expand",
-                               "analysis": "“Expand” (扩张/扩大) 指在范围、规模、体积上的向外延伸。例如公司扩大市场、气球膨胀。它强调边界的延展。“Develop” 则是指内部变得更加完善和高级。"
+                               "analysis": ""Expand" (扩张/扩大) 指在范围、规模、体积上的向外延伸。例如公司扩大市场、气球膨胀。它强调边界的延展。"Develop" 则是指内部变得更加完善和高级。"
                              }
                            ]
                          }
-                         
+
                          ---
-                         
+
                          ### TASK
-                         
+
                          现在，请严格按照上面的范例，为用户输入的单词生成 JSON 输出。不要在 JSON 对象之外添加任何额外的说明或文字。
                          """;
 
@@ -181,8 +187,12 @@ public class OpenAIService : IOpenAIService
                 new UserChatMessage(word)
             };
 
+            System.Console.WriteLine("[OpenAI] Sending request to API...");
             var completion = await chatClient.CompleteChatAsync(messages);
             var response = completion.Value.Content[0].Text;
+
+            System.Console.WriteLine($"[OpenAI] Received response (length: {response.Length} chars)");
+            System.Console.WriteLine($"[OpenAI] Response preview: {response.Substring(0, Math.Min(200, response.Length))}...");
 
             // Try to extract JSON if there's markdown code block
             var jsonStart = response.IndexOf('{');
@@ -191,13 +201,41 @@ public class OpenAIService : IOpenAIService
             if (jsonStart >= 0 && jsonEnd >= 0)
             {
                 var jsonContent = response.Substring(jsonStart, jsonEnd - jsonStart + 1);
-                return JsonSerializer.Deserialize<WordDefinition>(jsonContent, _jsonOptions);
+                System.Console.WriteLine($"[OpenAI] Extracted JSON (length: {jsonContent.Length} chars)");
+
+                var definition = JsonSerializer.Deserialize<WordDefinition>(jsonContent, _jsonOptions);
+
+                if (definition != null)
+                {
+                    System.Console.WriteLine($"[OpenAI] Successfully deserialized definition for word: '{definition.Word}'");
+                }
+                else
+                {
+                    System.Console.WriteLine("[OpenAI] ERROR: Deserialization returned null");
+                }
+
+                return definition;
+            }
+            else
+            {
+                System.Console.WriteLine($"[OpenAI] ERROR: Could not find JSON in response. jsonStart={jsonStart}, jsonEnd={jsonEnd}");
+                System.Console.WriteLine($"[OpenAI] Full response: {response}");
             }
 
             return null;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            System.Console.WriteLine($"[OpenAI] EXCEPTION in GenerateDefinition: {ex.GetType().Name}");
+            System.Console.WriteLine($"[OpenAI] Exception message: {ex.Message}");
+            System.Console.WriteLine($"[OpenAI] Stack trace: {ex.StackTrace}");
+
+            if (ex.InnerException != null)
+            {
+                System.Console.WriteLine($"[OpenAI] Inner exception: {ex.InnerException.GetType().Name}");
+                System.Console.WriteLine($"[OpenAI] Inner exception message: {ex.InnerException.Message}");
+            }
+
             return null;
         }
     }
