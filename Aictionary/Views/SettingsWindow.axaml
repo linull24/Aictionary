@@ -29,15 +29,45 @@
 
                         <StackPanel Spacing="5">
                             <TextBlock Text="API Key" FontWeight="SemiBold"/>
-                            <TextBox Text="{Binding ApiKey}"
-                                     Watermark="sk-..."
-                                     PasswordChar="*"/>
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBox Grid.Column="0"
+                                         Text="{Binding ApiKey}"
+                                         Watermark="sk-..."
+                                         PasswordChar="*"
+                                         IsVisible="{Binding !IsApiKeyVisible}"/>
+                                <TextBox Grid.Column="0"
+                                         Text="{Binding ApiKey}"
+                                         Watermark="sk-..."
+                                         IsVisible="{Binding IsApiKeyVisible}"/>
+                                <Button Grid.Column="1"
+                                        Command="{Binding ToggleApiKeyVisibilityCommand}"
+                                        Content="{Binding ApiKeyToggleButtonText}"
+                                        Margin="5,0,0,0"/>
+                            </Grid>
                         </StackPanel>
 
                         <StackPanel Spacing="5">
                             <TextBlock Text="Model" FontWeight="SemiBold"/>
-                            <TextBox Text="{Binding Model}"
-                                     Watermark="gpt-4o-mini"/>
+                            <ComboBox ItemsSource="{Binding AvailableModels}"
+                                      SelectedItem="{Binding Model, Mode=TwoWay}"
+                                      IsEnabled="{Binding !IsLoadingModels}"
+                                      HorizontalAlignment="Stretch"
+                                      Margin="0,5,0,0">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding}"/>
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                            <Button Command="{Binding RefreshModelsCommand}"
+                                    HorizontalAlignment="Right"
+                                    Content="Refresh Models"
+                                    IsEnabled="{Binding !IsLoadingModels}"
+                                    Margin="0,5,0,0"/>
+                            <ProgressBar IsIndeterminate="True"
+                                         HorizontalAlignment="Stretch"
+                                         IsVisible="{Binding IsLoadingModels}"
+                                         Height="4"/>
                         </StackPanel>
                     </StackPanel>
                 </ScrollViewer>

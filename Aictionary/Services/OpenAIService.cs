@@ -1,10 +1,13 @@
 using System;
 using System.ClientModel;
+using System.Collections.Generic;
+using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Aictionary.Models;
 using OpenAI;
 using OpenAI.Chat;
+using OpenAI.Models;
 
 namespace Aictionary.Services;
 
@@ -56,7 +59,7 @@ public class OpenAIService : IOpenAIService
         try
         {
             var chatClient = CreateChatClient();
-
+            
             var prompt = """
                          你是一位严谨的双语词典编纂专家。你的任务是为一个给定的英语单词及其近义词生成一份详细的中文解释，并以严格的 JSON 格式输出。
                          
@@ -172,7 +175,13 @@ public class OpenAIService : IOpenAIService
                          现在，请严格按照上面的范例，为用户输入的单词生成 JSON 输出。不要在 JSON 对象之外添加任何额外的说明或文字。
                          """;
 
-            var completion = await chatClient.CompleteChatAsync(prompt);
+            var messages = new ChatMessage[]
+            {
+                new SystemChatMessage(prompt),
+                new UserChatMessage(word)
+            };
+
+            var completion = await chatClient.CompleteChatAsync(messages);
             var response = completion.Value.Content[0].Text;
 
             // Try to extract JSON if there's markdown code block
@@ -190,6 +199,53 @@ public class OpenAIService : IOpenAIService
         catch (Exception)
         {
             return null;
+        }
+    }
+
+    public async Task<List<string>> GetAvailableModelsAsync()
+    {
+        try
+        {
+            var settings = _settingsService.CurrentSettings;
+            var apiKey = settings.ApiKey;
+
+            if (string.IsNullOrEmpty(apiKey))
+            {
+                return new List<string>();
+            }
+
+            OpenAIClient client;
+
+            if (!string.IsNullOrEmpty(settings.ApiBaseUrl) &&
+                settings.ApiBaseUrl != "https://api.openai.com/v1")
+            {
+                var options = new OpenAIClientOptions
+                {
+                    Endpoint = new Uri(settings.ApiBaseUrl)
+                };
+                client = new OpenAIClient(new ApiKeyCredential(apiKey), options);
+            }
+            else
+            {
+                client = new OpenAIClient(apiKey);
+            }
+
+            var modelClient = client.GetOpenAIModelClient();
+            var models = new List<string>();
+
+            var result = await modelClient.GetModelsAsync();
+            var modelCollection = result.Value;
+
+            foreach (var model in modelCollection)
+            {
+                models.Add(model.Id);
+            }
+
+            return models.OrderBy(m => m).ToList();
+        }
+        catch (Exception)
+        {
+            return new List<string>();
         }
     }
 }

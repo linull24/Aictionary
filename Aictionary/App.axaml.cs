@@ -102,14 +102,14 @@ public partial class App : Application
 
     public static SettingsWindow CreateSettingsWindow()
     {
-        if (_settingsService == null || _dictionaryService == null)
+        if (_settingsService == null || _dictionaryService == null || _openAIService == null)
         {
             throw new System.InvalidOperationException("Services not initialized");
         }
 
         return new SettingsWindow
         {
-            DataContext = new SettingsViewModel(_settingsService, _dictionaryService)
+            DataContext = new SettingsViewModel(_settingsService, _dictionaryService, _openAIService)
         };
     }
 }
