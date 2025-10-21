@@ -80,68 +80,32 @@ public static class WordJumpBehavior
 
     private static void OnPointerPressed(object? sender, PointerPressedEventArgs e)
     {
-        if (sender is not SelectableTextBlock textBlock)
-        {
-            Console.WriteLine("[WordJumpBehavior] Sender is not SelectableTextBlock");
-            return;
-        }
-
-        Console.WriteLine("[WordJumpBehavior] PointerPressed event triggered");
+        if (sender is not SelectableTextBlock textBlock) return;
 
         var keyModifiers = e.KeyModifiers;
         var isCmdOrCtrlPressed = keyModifiers.HasFlag(KeyModifiers.Meta) || keyModifiers.HasFlag(KeyModifiers.Control);
 
-        Console.WriteLine($"[WordJumpBehavior] Cmd/Ctrl pressed: {isCmdOrCtrlPressed}, KeyModifiers: {keyModifiers}");
-
-        if (!isCmdOrCtrlPressed)
-        {
-            Console.WriteLine("[WordJumpBehavior] Cmd/Ctrl not pressed, returning");
-            return;
-        }
+        if (!isCmdOrCtrlPressed) return;
 
         var point = e.GetCurrentPoint(textBlock);
-        if (!point.Properties.IsLeftButtonPressed)
-        {
-            Console.WriteLine("[WordJumpBehavior] Left button not pressed, returning");
-            return;
-        }
+        if (!point.Properties.IsLeftButtonPressed) return;
 
         // Get the word at the click position
         var word = GetWordAtPosition(textBlock);
-        Console.WriteLine($"[WordJumpBehavior] Extracted word: '{word}'");
-
-        if (string.IsNullOrWhiteSpace(word))
-        {
-            Console.WriteLine("[WordJumpBehavior] Word is null or whitespace, returning");
-            return;
-        }
+        if (string.IsNullOrWhiteSpace(word)) return;
 
         // Only jump if it's an English word (contains only ASCII letters)
-        if (!IsEnglishWord(word))
-        {
-            Console.WriteLine($"[WordJumpBehavior] Word '{word}' is not an English word, returning");
-            return;
-        }
-
-        Console.WriteLine($"[WordJumpBehavior] Word '{word}' is valid, attempting to find MainWindow");
+        if (!IsEnglishWord(word)) return;
 
         // Find the MainWindow and trigger search
         var window = GetParentWindow(textBlock);
-        Console.WriteLine($"[WordJumpBehavior] Found window: {window?.GetType().Name ?? "null"}");
-
         if (window?.DataContext is MainWindowViewModel viewModel)
         {
-            Console.WriteLine($"[WordJumpBehavior] Found ViewModel, setting SearchText to '{word}' and executing command");
             viewModel.SearchText = word;
             viewModel.SearchCommand.Execute().Subscribe();
         }
-        else
-        {
-            Console.WriteLine($"[WordJumpBehavior] DataContext is not MainWindowViewModel. DataContext type: {window?.DataContext?.GetType().Name ?? "null"}");
-        }
 
         e.Handled = true;
-        Console.WriteLine("[WordJumpBehavior] Event handled");
     }
 
     private static string? GetWordAtPosition(SelectableTextBlock textBlock)

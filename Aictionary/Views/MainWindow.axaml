@@ -6,12 +6,17 @@
         xmlns:iconPacks="clr-namespace:IconPacks.Avalonia;assembly=IconPacks.Avalonia"
         xmlns:lucide="https://github.com/MahApps/IconPacks.Avalonia"
         xmlns:behaviors="using:Aictionary.Behaviors"
+        xmlns:converters="using:Aictionary.Converters"
         mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="700"
         x:Class="Aictionary.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Icon="/Assets/avalonia-logo.ico"
         Title="Aictionary - AI Dictionary"
         Width="900" Height="700">
+
+    <Window.Resources>
+        <converters:FormNameConverter x:Key="FormNameConverter"/>
+    </Window.Resources>
 
     <Design.DataContext>
         <vm:MainWindowViewModel/>
@@ -74,27 +79,20 @@
 
                 <!-- Word Forms -->
                 <Border BorderBrush="LightGray" BorderThickness="1" Padding="15" CornerRadius="5"
-                        IsVisible="{Binding CurrentDefinition.Forms, Converter={x:Static ObjectConverters.IsNotNull}}">
+                        IsVisible="{Binding CurrentDefinition.Forms.Count}">
                     <StackPanel Spacing="5">
                         <TextBlock Text="Word Forms" FontSize="18" FontWeight="SemiBold"/>
-                        <StackPanel Spacing="3" Margin="10,5,0,0">
-                            <SelectableTextBlock IsVisible="{Binding CurrentDefinition.Forms.ThirdPersonSingular, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-                                <Run Text="Third Person Singular: " FontWeight="SemiBold"/>
-                                <Run Text="{Binding CurrentDefinition.Forms.ThirdPersonSingular}"/>
-                            </SelectableTextBlock>
-                            <SelectableTextBlock IsVisible="{Binding CurrentDefinition.Forms.PastTense, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-                                <Run Text="Past Tense: " FontWeight="SemiBold"/>
-                                <Run Text="{Binding CurrentDefinition.Forms.PastTense}"/>
-                            </SelectableTextBlock>
-                            <SelectableTextBlock IsVisible="{Binding CurrentDefinition.Forms.PastParticiple, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-                                <Run Text="Past Participle: " FontWeight="SemiBold"/>
-                                <Run Text="{Binding CurrentDefinition.Forms.PastParticiple}"/>
-                            </SelectableTextBlock>
-                            <SelectableTextBlock IsVisible="{Binding CurrentDefinition.Forms.PresentParticiple, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-                                <Run Text="Present Participle: " FontWeight="SemiBold"/>
-                                <Run Text="{Binding CurrentDefinition.Forms.PresentParticiple}"/>
-                            </SelectableTextBlock>
-                        </StackPanel>
+                        <ItemsControl ItemsSource="{Binding CurrentDefinition.Forms}" Margin="10,5,0,0">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <SelectableTextBlock Margin="0,3">
+                                        <Run Text="{Binding Key, Converter={StaticResource FormNameConverter}, Mode=OneWay}" FontWeight="SemiBold"/>
+                                        <Run Text=": "/>
+                                        <Run Text="{Binding Value, Mode=OneWay}"/>
+                                    </SelectableTextBlock>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
                     </StackPanel>
                 </Border>
 

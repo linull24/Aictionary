@@ -1,18 +1,7 @@
-using System.Text.Json.Serialization;
+using System.Collections.Generic;
 
 namespace Aictionary.Models;
 
-public class WordForms
+public class WordForms : Dictionary<string, string>
 {
-    [JsonPropertyName("third_person_singular")]
-    public string? ThirdPersonSingular { get; set; }
-
-    [JsonPropertyName("past_tense")]
-    public string? PastTense { get; set; }
-
-    [JsonPropertyName("past_participle")]
-    public string? PastParticiple { get; set; }
-
-    [JsonPropertyName("present_participle")]
-    public string? PresentParticiple { get; set; }
 }

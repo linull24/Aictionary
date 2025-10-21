@@ -63,10 +63,12 @@ public class OpenAIService : IOpenAIService
   ""pronunciation"": ""phonetic pronunciation"",
   ""concise_definition"": ""brief definition with part of speech and Chinese translation"",
   ""forms"": {{
-    ""third_person_singular"": ""form if applicable"",
-    ""past_tense"": ""form if applicable"",
-    ""past_participle"": ""form if applicable"",
-    ""present_participle"": ""form if applicable""
+    // Include appropriate word forms based on the part of speech:
+    // For verbs: ""third_person_singular"", ""past_tense"", ""past_participle"", ""present_participle""
+    // For nouns: ""plural""
+    // For adjectives: ""comparative"", ""superlative""
+    // For adverbs: ""comparative"", ""superlative"" (if applicable)
+    // Only include forms that are applicable to this word
   }},
   ""definitions"": [
     {{
@@ -85,7 +87,9 @@ public class OpenAIService : IOpenAIService
   ]
 }}
 
-Please provide at least 2-3 different definitions if the word has multiple meanings, and 2-3 similar words for comparison. Ensure all fields are filled appropriately. Return ONLY the JSON, no additional text.";
+Please provide at least 2-3 different definitions if the word has multiple meanings, and 2-3 similar words for comparison.
+For the ""forms"" field, include only the relevant word forms based on the part of speech (verbs get conjugations, nouns get plurals, adjectives get comparative/superlative). Use clear form names as keys (e.g., ""plural"", ""past_tense"", ""comparative"", etc.).
+Return ONLY the JSON, no additional text or comments.";
 
             var completion = await chatClient.CompleteChatAsync(prompt);
             var response = completion.Value.Content[0].Text;
