@@ -5,6 +5,6 @@ namespace Aictionary.Services;
 
 public interface IDictionaryDownloadService
 {
-    Task EnsureDictionaryExistsAsync(Action<string, double>? progressCallback = null);
-    bool DictionaryExists();
+    Task EnsureDictionaryExistsAsync(string dictionaryPath, Action<string, double>? progressCallback = null);
+    bool DictionaryExists(string dictionaryPath);
 }

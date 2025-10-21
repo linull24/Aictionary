@@ -10,7 +10,7 @@ public class DictionaryDownloadService : IDictionaryDownloadService
 {
     private readonly IDictionaryResourceService _resourceService;
     private readonly HttpClient _httpClient;
-    private const string DictionaryDirectoryName = "dictionary";
+    private const int MinimumDictionaryFiles = 20000;
 
     public DictionaryDownloadService(IDictionaryResourceService resourceService)
     {
@@ -19,38 +19,90 @@ public class DictionaryDownloadService : IDictionaryDownloadService
         _httpClient = new HttpClient();
     }
 
-    public bool DictionaryExists()
+    public bool DictionaryExists(string dictionaryPath)
     {
-        var workingDirectory = Directory.GetCurrentDirectory();
-        var dictionaryPath = Path.Combine(workingDirectory, DictionaryDirectoryName);
-        var exists = Directory.Exists(dictionaryPath);
-        Console.WriteLine($"[DictionaryDownloadService] DictionaryExists check: {exists}, path: {dictionaryPath}");
-        return exists;
+        Console.WriteLine($"[DictionaryDownloadService] DictionaryExists check for path: {dictionaryPath}");
+        
+        if (string.IsNullOrEmpty(dictionaryPath) || !Directory.Exists(dictionaryPath))
+        {
+            Console.WriteLine("[DictionaryDownloadService] Path is empty or doesn't exist");
+            return false;
+        }
+
+        try
+        {
+            var fileCount = Directory.GetFiles(dictionaryPath, "*.json").Length;
+            var isValid = fileCount >= MinimumDictionaryFiles;
+            Console.WriteLine($"[DictionaryDownloadService] Found {fileCount} files, minimum required: {MinimumDictionaryFiles}, valid: {isValid}");
+            return isValid;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[DictionaryDownloadService] Error checking dictionary: {ex.Message}");
+            return false;
+        }
     }
 
-    public async Task EnsureDictionaryExistsAsync(Action<string, double>? progressCallback = null)
+    public async Task EnsureDictionaryExistsAsync(string dictionaryPath, Action<string, double>? progressCallback = null)
     {
         Console.WriteLine("[DictionaryDownloadService] EnsureDictionaryExistsAsync called");
-        var workingDirectory = Directory.GetCurrentDirectory();
-        var dictionaryPath = Path.Combine(workingDirectory, DictionaryDirectoryName);
-        Console.WriteLine($"[DictionaryDownloadService] Working directory: {workingDirectory}");
         Console.WriteLine($"[DictionaryDownloadService] Dictionary path: {dictionaryPath}");
 
+        if (string.IsNullOrEmpty(dictionaryPath))
+        {
+            var errorMessage = "Dictionary path is not configured.";
+            Console.WriteLine($"[DictionaryDownloadService] {errorMessage}");
+            progressCallback?.Invoke(errorMessage, 0);
+            throw new InvalidOperationException(errorMessage);
+        }
+
+        // Check if directory exists and has enough files
         if (Directory.Exists(dictionaryPath))
         {
-            Console.WriteLine("[DictionaryDownloadService] Dictionary already exists, skipping download");
-            progressCallback?.Invoke("Dictionary already exists. No download needed.", 100);
-            return;
+            try
+            {
+                var fileCount = Directory.GetFiles(dictionaryPath, "*.json").Length;
+                Console.WriteLine($"[DictionaryDownloadService] Found {fileCount} files in existing directory");
+
+                if (fileCount >= MinimumDictionaryFiles)
+                {
+                    Console.WriteLine("[DictionaryDownloadService] Dictionary already exists with sufficient files, skipping download");
+                    progressCallback?.Invoke("Dictionary already exists. No download needed.", 100);
+                    return;
+                }
+
+                // Directory exists but doesn't have enough files - it's broken
+                Console.WriteLine($"[DictionaryDownloadService] Dictionary is broken (only {fileCount} files, need {MinimumDictionaryFiles}), removing...");
+                progressCallback?.Invoke($"Dictionary incomplete ({fileCount} files). Removing and re-downloading...", 5);
+                Directory.Delete(dictionaryPath, true);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[DictionaryDownloadService] Error checking/removing existing directory: {ex.Message}");
+                progressCallback?.Invoke("Error checking dictionary. Re-downloading...", 5);
+                try
+                {
+                    Directory.Delete(dictionaryPath, true);
+                }
+                catch
+                {
+                    // Ignore deletion errors
+                }
+            }
         }
 
         Console.WriteLine("[DictionaryDownloadService] Starting download...");
-        await DownloadAndExtractDictionaryAsync(workingDirectory, progressCallback);
+        await DownloadAndExtractDictionaryAsync(dictionaryPath, progressCallback);
     }
 
-    private async Task DownloadAndExtractDictionaryAsync(string workingDirectory, Action<string, double>? progressCallback)
+    private async Task DownloadAndExtractDictionaryAsync(string dictionaryPath, Action<string, double>? progressCallback)
     {
         Console.WriteLine("[DictionaryDownloadService] DownloadAndExtractDictionaryAsync started");
+        Console.WriteLine($"[DictionaryDownloadService] Dictionary path: {dictionaryPath}");
         Console.WriteLine($"[DictionaryDownloadService] progressCallback is null: {progressCallback == null}");
+
+        var parentDirectory = Directory.GetParent(dictionaryPath)?.FullName ?? Directory.GetCurrentDirectory();
+        var tempZipPath = Path.Combine(parentDirectory, "dictionary_temp.zip");
 
         try
         {
@@ -61,7 +113,6 @@ public class DictionaryDownloadService : IDictionaryDownloadService
             var downloadUrl = await _resourceService.GetDictionaryDownloadUrlAsync();
             Console.WriteLine($"[DictionaryDownloadService] Download URL: {downloadUrl}");
 
-            var tempZipPath = Path.Combine(workingDirectory, "dictionary_temp.zip");
             Console.WriteLine($"[DictionaryDownloadService] Temp zip path: {tempZipPath}");
 
             Console.WriteLine("[DictionaryDownloadService] Invoking progress callback: Downloading dictionary...");
@@ -106,7 +157,7 @@ public class DictionaryDownloadService : IDictionaryDownloadService
             progressCallback?.Invoke("Extracting dictionary...", 85);
 
             Console.WriteLine("[DictionaryDownloadService] Starting extraction...");
-            ZipFile.ExtractToDirectory(tempZipPath, workingDirectory);
+            ZipFile.ExtractToDirectory(tempZipPath, parentDirectory);
             Console.WriteLine("[DictionaryDownloadService] Extraction complete");
 
             Console.WriteLine("[DictionaryDownloadService] Invoking progress callback: Download complete!");
@@ -120,7 +171,6 @@ public class DictionaryDownloadService : IDictionaryDownloadService
         }
         finally
         {
-            var tempZipPath = Path.Combine(workingDirectory, "dictionary_temp.zip");
             if (File.Exists(tempZipPath))
             {
                 Console.WriteLine("[DictionaryDownloadService] Deleting temp zip file");

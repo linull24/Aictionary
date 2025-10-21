@@ -194,6 +194,12 @@ public class SettingsViewModel : ViewModelBase
         System.Console.WriteLine("[SettingsViewModel] DownloadDictionaryAsync started");
         try
         {
+            if (string.IsNullOrEmpty(DictionaryPath))
+            {
+                StatusMessage = "Please configure dictionary path first.";
+                return;
+            }
+
             System.Console.WriteLine("[SettingsViewModel] Creating services");
             var resourceService = new DictionaryResourceService();
             var downloadService = new DictionaryDownloadService(resourceService);
@@ -204,8 +210,8 @@ public class SettingsViewModel : ViewModelBase
             System.Console.WriteLine("[SettingsViewModel] Showing download window");
             downloadWindow.Show();
 
-            System.Console.WriteLine("[SettingsViewModel] Starting download");
-            await downloadService.EnsureDictionaryExistsAsync((message, progress) =>
+            System.Console.WriteLine($"[SettingsViewModel] Starting download to path: {DictionaryPath}");
+            await downloadService.EnsureDictionaryExistsAsync(DictionaryPath, (message, progress) =>
             {
                 System.Console.WriteLine($"[SettingsViewModel] Progress callback: {message} ({progress}%)");
                 Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
@@ -220,6 +226,9 @@ public class SettingsViewModel : ViewModelBase
                         System.Console.WriteLine("[SettingsViewModel] Download completed!");
                         downloadWindow.ViewModel.IsCompleted = true;
                         StatusMessage = "Dictionary downloaded successfully!";
+                        
+                        // Refresh the cached words list
+                        _ = Task.Run(async () => await RefreshCachedWordsAsync());
                     }
                 });
             });

@@ -27,28 +27,38 @@ public partial class App : Application
         {
             System.Console.WriteLine("[App] Desktop lifetime detected");
 
-            // Ensure dictionary exists before initializing services
+            // Initialize settings service first to get dictionary path
+            System.Console.WriteLine("[App] Initializing settings service...");
+            _settingsService = new SettingsService();
+            await _settingsService.LoadSettingsAsync();
+
+            var dictionaryPath = _settingsService.CurrentSettings.DictionaryPath;
+            System.Console.WriteLine($"[App] Dictionary path from settings: {dictionaryPath}");
+
+            // Ensure dictionary exists before initializing other services
             var resourceService = new DictionaryResourceService();
             System.Console.WriteLine("[App] DictionaryResourceService created");
 
             var downloadService = new DictionaryDownloadService(resourceService);
             System.Console.WriteLine("[App] DictionaryDownloadService created");
-            
-            var dictionaryExists = downloadService.DictionaryExists();
+
+            var dictionaryExists = downloadService.DictionaryExists(dictionaryPath);
             System.Console.WriteLine($"[App] Dictionary exists: {dictionaryExists}");
+
+            Views.DownloadProgressWindow? downloadWindow = null;
 
             if (!dictionaryExists)
             {
                 System.Console.WriteLine("[App] Creating download window");
-                var downloadWindow = new Views.DownloadProgressWindow();
-                
+                downloadWindow = new Views.DownloadProgressWindow();
+
                 System.Console.WriteLine("[App] Showing download window");
                 downloadWindow.Show();
-                
+
                 try
                 {
                     System.Console.WriteLine("[App] Starting download...");
-                    await downloadService.EnsureDictionaryExistsAsync((message, progress) =>
+                    await downloadService.EnsureDictionaryExistsAsync(dictionaryPath, (message, progress) =>
                     {
                         System.Console.WriteLine($"[App] Progress callback: {message} ({progress}%)");
                         Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
@@ -57,7 +67,7 @@ public partial class App : Application
                             downloadWindow.ViewModel.StatusMessage = message;
                             downloadWindow.ViewModel.Progress = progress;
                             downloadWindow.ViewModel.IsIndeterminate = progress < 10;
-                            
+
                             if (progress >= 100)
                             {
                                 System.Console.WriteLine("[App] Download completed!");
@@ -80,10 +90,7 @@ public partial class App : Application
                 }
             }
 
-            System.Console.WriteLine("[App] Initializing services...");
-            // Initialize services
-            _settingsService = new SettingsService();
-            await _settingsService.LoadSettingsAsync();
+            System.Console.WriteLine("[App] Initializing other services...");
 
             _dictionaryService = new DictionaryService(_settingsService);
             _openAIService = new OpenAIService(_settingsService);
@@ -94,6 +101,24 @@ public partial class App : Application
                 DataContext = new MainWindowViewModel(_dictionaryService, _openAIService, _settingsService),
             };
             System.Console.WriteLine("[App] Main window created");
+
+            // Show main window first, then close download window to prevent app exit
+            if (downloadWindow != null)
+            {
+                System.Console.WriteLine("[App] Showing main window and closing download window");
+                await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    desktop.MainWindow.Show();
+                    System.Console.WriteLine("[App] Main window shown, now closing download window");
+                    downloadWindow.Close();
+                    System.Console.WriteLine("[App] Download window closed");
+                });
+            }
+            else
+            {
+                // No download window, just show main window normally
+                desktop.MainWindow.Show();
+            }
         }
 
         base.OnFrameworkInitializationCompleted();
