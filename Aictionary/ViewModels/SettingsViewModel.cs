@@ -46,11 +46,14 @@ public class SettingsViewModel : ViewModelBase
             _availableModels.Add(Model);
         }
 
-        // Auto-load models list when the view model is created
-        _ = Task.Run(async () =>
+        // Auto-load models list only if no model is selected
+        if (string.IsNullOrEmpty(Model))
         {
-            await RefreshModelsAsync();
-        });
+            _ = Task.Run(async () =>
+            {
+                await RefreshModelsAsync();
+            });
+        }
 
         // Auto-save settings when any property changes
         this.WhenAnyValue(
