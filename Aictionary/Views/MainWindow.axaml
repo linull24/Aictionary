@@ -51,14 +51,25 @@
                                          Margin="10,0,0,0"/>
                 </StackPanel>
 
-                <Button Grid.Column="1"
-                        Command="{Binding OpenSettingsCommand}"
-                        Padding="10"
-                        ToolTip.Tip="Settings"
-                        Background="Transparent"
-                        BorderThickness="0">
-                    <lucide:PackIconLucide Kind="Settings" Width="24" Height="24" />
-                </Button>
+                <StackPanel Grid.Column="1"
+                            Orientation="Horizontal"
+                            HorizontalAlignment="Right"
+                            Spacing="5">
+                    <Button Command="{Binding OpenStatisticsCommand}"
+                            Padding="10"
+                            ToolTip.Tip="Statistics"
+                            Background="Transparent"
+                            BorderThickness="0">
+                        <lucide:PackIconLucide Kind="ChartBar" Width="24" Height="24" />
+                    </Button>
+                    <Button Command="{Binding OpenSettingsCommand}"
+                            Padding="10"
+                            ToolTip.Tip="Settings"
+                            Background="Transparent"
+                            BorderThickness="0">
+                        <lucide:PackIconLucide Kind="Settings" Width="24" Height="24" />
+                    </Button>
+                </StackPanel>
             </Grid>
             <Grid ColumnDefinitions="*,Auto">
                 <TextBox Grid.Column="0"

@@ -13,6 +13,7 @@ public partial class App : Application
     private static ISettingsService? _settingsService;
     private static IDictionaryService? _dictionaryService;
     private static IOpenAIService? _openAIService;
+    private static IQueryHistoryService? _queryHistoryService;
 
     public override void Initialize()
     {
@@ -94,11 +95,12 @@ public partial class App : Application
 
             _dictionaryService = new DictionaryService(_settingsService);
             _openAIService = new OpenAIService(_settingsService);
+            _queryHistoryService = new QueryHistoryService();
 
             System.Console.WriteLine("[App] Creating main window");
             desktop.MainWindow = new MainWindow
             {
-                DataContext = new MainWindowViewModel(_dictionaryService, _openAIService, _settingsService),
+                DataContext = new MainWindowViewModel(_dictionaryService, _openAIService, _settingsService, _queryHistoryService),
             };
             System.Console.WriteLine("[App] Main window created");
 
@@ -135,6 +137,19 @@ public partial class App : Application
         return new SettingsWindow
         {
             DataContext = new SettingsViewModel(_settingsService, _dictionaryService, _openAIService)
+        };
+    }
+
+    public static StatisticsWindow CreateStatisticsWindow()
+    {
+        if (_queryHistoryService == null)
+        {
+            throw new System.InvalidOperationException("Services not initialized");
+        }
+
+        return new StatisticsWindow
+        {
+            DataContext = new StatisticsViewModel(_queryHistoryService)
         };
     }
 }

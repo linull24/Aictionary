@@ -12,6 +12,7 @@ public class MainWindowViewModel : ViewModelBase
     private readonly IDictionaryService _dictionaryService;
     private readonly IOpenAIService _openAIService;
     private readonly ISettingsService _settingsService;
+    private readonly IQueryHistoryService _queryHistoryService;
 
     private string _searchText = string.Empty;
     private WordDefinition? _currentDefinition;
@@ -19,15 +20,18 @@ public class MainWindowViewModel : ViewModelBase
     private string _errorMessage = string.Empty;
 
     public event EventHandler? OpenSettingsRequested;
+    public event EventHandler? OpenStatisticsRequested;
 
     public MainWindowViewModel(
         IDictionaryService dictionaryService,
         IOpenAIService openAIService,
-        ISettingsService settingsService)
+        ISettingsService settingsService,
+        IQueryHistoryService queryHistoryService)
     {
         _dictionaryService = dictionaryService;
         _openAIService = openAIService;
         _settingsService = settingsService;
+        _queryHistoryService = queryHistoryService;
 
         SearchCommand = ReactiveCommand.CreateFromTask(
             SearchAsync,
@@ -35,6 +39,7 @@ public class MainWindowViewModel : ViewModelBase
         );
 
         OpenSettingsCommand = ReactiveCommand.Create(OpenSettings);
+        OpenStatisticsCommand = ReactiveCommand.Create(OpenStatistics);
     }
 
     public string SearchText
@@ -63,20 +68,29 @@ public class MainWindowViewModel : ViewModelBase
 
     public ReactiveCommand<Unit, Unit> SearchCommand { get; }
     public ReactiveCommand<Unit, Unit> OpenSettingsCommand { get; }
+    public ReactiveCommand<Unit, Unit> OpenStatisticsCommand { get; }
 
     private async Task SearchAsync()
     {
+        var query = SearchText.Trim();
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            return;
+        }
+
         IsLoading = true;
         ErrorMessage = string.Empty;
         CurrentDefinition = null;
 
-        System.Console.WriteLine($"[MainViewModel] SearchAsync START for word: '{SearchText}'");
+        System.Console.WriteLine($"[MainViewModel] SearchAsync START for word: '{query}'");
 
         try
         {
+            await _queryHistoryService.AddEntryAsync(query, DateTime.UtcNow);
+
             // First, try to get from local cache
             System.Console.WriteLine("[MainViewModel] Attempting to get definition from cache...");
-            var definition = await _dictionaryService.GetDefinitionAsync(SearchText);
+            var definition = await _dictionaryService.GetDefinitionAsync(query);
             var fromCache = definition != null;
 
             if (fromCache)
@@ -92,7 +106,7 @@ public class MainWindowViewModel : ViewModelBase
             {
                 // If not found in cache, query OpenAI
                 System.Console.WriteLine("[MainViewModel] Querying OpenAI for definition...");
-                definition = await _openAIService.GenerateDefinitionAsync(SearchText);
+                definition = await _openAIService.GenerateDefinitionAsync(query);
 
                 // Save the AI-generated definition to cache
                 if (definition != null)
@@ -139,5 +153,10 @@ public class MainWindowViewModel : ViewModelBase
     private void OpenSettings()
     {
         OpenSettingsRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void OpenStatistics()
+    {
+        OpenStatisticsRequested?.Invoke(this, EventArgs.Empty);
     }
 }

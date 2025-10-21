@@ -18,6 +18,7 @@ public partial class MainWindow : Window
         if (DataContext is MainWindowViewModel viewModel)
         {
             viewModel.OpenSettingsRequested += OnOpenSettingsRequested;
+            viewModel.OpenStatisticsRequested += OnOpenStatisticsRequested;
         }
     }
 
@@ -25,5 +26,11 @@ public partial class MainWindow : Window
     {
         var settingsWindow = App.CreateSettingsWindow();
         await settingsWindow.ShowDialog(this);
+    }
+
+    private async void OnOpenStatisticsRequested(object? sender, EventArgs e)
+    {
+        var statisticsWindow = App.CreateStatisticsWindow();
+        await statisticsWindow.ShowDialog(this);
     }
 }
