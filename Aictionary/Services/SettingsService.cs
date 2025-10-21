@@ -3,71 +3,84 @@ using System.IO;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Aictionary.Models;
+using Microsoft.Extensions.Configuration;
 
 namespace Aictionary.Services;
 
 public class SettingsService : ISettingsService
 {
     private readonly string _settingsFilePath;
-    private readonly JsonSerializerOptions _jsonOptions;
+    private readonly IConfigurationRoot _configuration;
     private AppSettings _currentSettings;
 
     public SettingsService()
     {
         var appDirectory = AppDomain.CurrentDomain.BaseDirectory;
-        _settingsFilePath = Path.Combine(appDirectory, "settings.json");
-        _jsonOptions = new JsonSerializerOptions
+        _settingsFilePath = Path.Combine(appDirectory, "appsettings.json");
+
+        // Ensure settings file exists
+        if (!File.Exists(_settingsFilePath))
         {
-            PropertyNameCaseInsensitive = true,
-            WriteIndented = true
-        };
+            var defaultSettings = new AppSettings
+            {
+                DictionaryPath = Path.Combine(appDirectory, "dictionary"),
+                ApiBaseUrl = "https://api.openai.com/v1",
+                Model = "gpt-4o-mini"
+            };
+            var json = JsonSerializer.Serialize(defaultSettings, new JsonSerializerOptions { WriteIndented = true });
+            File.WriteAllText(_settingsFilePath, json);
+        }
+
+        _configuration = new ConfigurationBuilder()
+            .SetBasePath(appDirectory)
+            .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+            .Build();
 
         _currentSettings = new AppSettings
         {
             DictionaryPath = Path.Combine(appDirectory, "dictionary")
         };
+
+        // Subscribe to configuration changes
+        _configuration.GetReloadToken().RegisterChangeCallback(_ =>
+        {
+            Console.WriteLine("[SettingsService] Configuration file changed, reloading...");
+            LoadSettingsFromConfiguration();
+        }, null);
     }
 
     public AppSettings CurrentSettings => _currentSettings;
 
     public async Task<AppSettings> LoadSettingsAsync()
     {
-        if (File.Exists(_settingsFilePath))
-        {
-            try
-            {
-                var json = await File.ReadAllTextAsync(_settingsFilePath);
-                var settings = JsonSerializer.Deserialize<AppSettings>(json, _jsonOptions);
-                if (settings != null)
-                {
-                    _currentSettings = settings;
-
-                    // Ensure dictionary path is set
-                    if (string.IsNullOrEmpty(_currentSettings.DictionaryPath))
-                    {
-                        _currentSettings.DictionaryPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "dictionary");
-                    }
-                }
-            }
-            catch (Exception)
-            {
-                // If loading fails, use default settings
-            }
-        }
-
-        // Get API key from environment if not set in settings
-        if (string.IsNullOrEmpty(_currentSettings.ApiKey))
-        {
-            _currentSettings.ApiKey = Environment.GetEnvironmentVariable("OPENAI_API_KEY") ?? string.Empty;
-        }
-
+        await Task.CompletedTask;
+        LoadSettingsFromConfiguration();
         return _currentSettings;
+    }
+
+    private void LoadSettingsFromConfiguration()
+    {
+        var appDirectory = AppDomain.CurrentDomain.BaseDirectory;
+
+        _currentSettings.ApiBaseUrl = _configuration["ApiBaseUrl"] ?? "https://api.openai.com/v1";
+        _currentSettings.ApiKey = _configuration["ApiKey"] ?? Environment.GetEnvironmentVariable("OPENAI_API_KEY") ?? string.Empty;
+        _currentSettings.Model = _configuration["Model"] ?? "gpt-4o-mini";
+        _currentSettings.DictionaryPath = _configuration["DictionaryPath"] ?? Path.Combine(appDirectory, "dictionary");
     }
 
     public async Task SaveSettingsAsync(AppSettings settings)
     {
         _currentSettings = settings;
-        var json = JsonSerializer.Serialize(settings, _jsonOptions);
+
+        var settingsToSave = new
+        {
+            ApiBaseUrl = settings.ApiBaseUrl,
+            ApiKey = settings.ApiKey,
+            Model = settings.Model,
+            DictionaryPath = settings.DictionaryPath
+        };
+
+        var json = JsonSerializer.Serialize(settingsToSave, new JsonSerializerOptions { WriteIndented = true });
         await File.WriteAllTextAsync(_settingsFilePath, json);
     }
 }

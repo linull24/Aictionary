@@ -37,8 +37,11 @@ public class SettingsViewModel : ViewModelBase
         )
         .Skip(1) // Skip the initial load
         .Throttle(TimeSpan.FromMilliseconds(500)) // Debounce to avoid saving too frequently
-        .ObserveOn(RxApp.TaskpoolScheduler)
-        .Subscribe(async _ => await AutoSaveSettingsAsync());
+        .SelectMany(_ => System.Reactive.Linq.Observable.FromAsync(() => AutoSaveSettingsAsync()))
+        .Subscribe(
+            _ => { },
+            ex => System.Console.WriteLine($"[SettingsViewModel] Auto-save subscription ERROR: {ex.Message}")
+        );
     }
 
     public string ApiBaseUrl
