@@ -20,6 +20,18 @@
         <AvaloniaResource Include="Assets\**" />
     </ItemGroup>
 
+    <!-- macOS app bundle configuration -->
+    <ItemGroup>
+        <None Include="Info.plist" CopyToOutputDirectory="PreserveNewest" />
+        <None Include="Assets\AppIcon.icns" CopyToOutputDirectory="PreserveNewest" />
+    </ItemGroup>
+
+    <Target Name="CreateMacOSAppBundle" AfterTargets="Build" Condition="$([MSBuild]::IsOSPlatform('OSX'))">
+        <MakeDir Directories="$(OutputPath)/../Resources" />
+        <Copy SourceFiles="Assets/AppIcon.icns" DestinationFolder="$(OutputPath)/../Resources" />
+        <Copy SourceFiles="Info.plist" DestinationFiles="$(OutputPath)/../INFO.plist" />
+    </Target>
+
     <ItemGroup>
         <PackageReference Include="Avalonia" Version="11.2.7" />
         <PackageReference Include="Avalonia.Desktop" Version="11.2.7" />
