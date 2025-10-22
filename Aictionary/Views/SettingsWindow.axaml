@@ -156,24 +156,29 @@
                                        FontSize="11" Foreground="Gray" Margin="0,5,0,0"/>
                         </StackPanel>
 
-                        <Border BorderBrush="LightGray" BorderThickness="0,1,0,0" Margin="0,10,0,0" Padding="0,15,0,0">
+                        <Border BorderBrush="LightGray"
+                                BorderThickness="0,1,0,0"
+                                Margin="0,10,0,0"
+                                Padding="0,15,0,0"
+                                IsVisible="{Binding IsAccessibilitySectionVisible}">
                             <StackPanel Spacing="10">
                                 <TextBlock Text="macOS Accessibility Permissions" FontWeight="SemiBold"/>
                                 <TextBlock Text="Global hotkeys require accessibility permissions on macOS. Click the button below to open System Preferences."
                                            FontSize="12" Foreground="Gray" TextWrapping="Wrap"/>
 
                                 <StackPanel Spacing="5">
-                                    <TextBlock Text="{Binding PermissionStatusMessage}"
-                                               FontSize="12"/>
-
                                     <StackPanel Orientation="Horizontal" Spacing="10">
                                         <Button Command="{Binding RequestAccessibilityPermissionsCommand}"
                                                 Content="Open System Preferences"
                                                 Width="200"/>
                                         <Button Command="{Binding CheckPermissionsCommand}"
-                                                Content="{Binding CheckPermissionsButtonText}"
+                                                Content="Check Permissions"
                                                 Width="200"/>
                                     </StackPanel>
+
+                                    <TextBlock Text="{Binding PermissionStatusMessage}"
+                                               FontSize="12"
+                                               Margin="0,5,0,0"/>
                                 </StackPanel>
                             </StackPanel>
                         </Border>

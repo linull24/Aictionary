@@ -5,6 +5,7 @@ using System.Linq;
 using System.Reactive;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
+using System.Runtime.InteropServices;
 using Aictionary.Models;
 using Aictionary.Services;
 using DynamicData;
@@ -32,6 +33,7 @@ public class SettingsViewModel : ViewModelBase
     private bool _hasAccessibilityPermissions = true;
     private string _permissionStatusMessage = string.Empty;
     private bool _isCheckingPermissions = false;
+    private bool _isAccessibilitySectionVisible;
 
     private readonly ObservableCollection<string> _availableModels = new();
     private readonly ObservableCollection<string> _cachedWords = new();
@@ -48,18 +50,18 @@ public class SettingsViewModel : ViewModelBase
         _openAIService = openAIService;
         _hotkeyService = hotkeyService;
 
+        IsAccessibilitySectionVisible = _hotkeyService != null && RuntimeInformation.IsOSPlatform(OSPlatform.OSX);
+
         DownloadDictionaryCommand = ReactiveCommand.CreateFromTask(DownloadDictionaryAsync);
         RefreshModelsCommand = ReactiveCommand.CreateFromTask(RefreshModelsAsync);
         ToggleApiKeyVisibilityCommand = ReactiveCommand.Create(ToggleApiKeyVisibility);
         RefreshCachedWordsCommand = ReactiveCommand.CreateFromTask(RefreshCachedWordsAsync);
-        RequestAccessibilityPermissionsCommand = ReactiveCommand.Create(RequestAccessibilityPermissions);
-        CheckPermissionsCommand = ReactiveCommand.Create(
-            CheckPermissions,
-            this.WhenAnyValue(x => x.IsCheckingPermissions)
-                .Select(isChecking => !isChecking));
+        var canManageAccessibility = this.WhenAnyValue(x => x.IsAccessibilitySectionVisible);
+        RequestAccessibilityPermissionsCommand = ReactiveCommand.Create(RequestAccessibilityPermissions, canManageAccessibility);
+        CheckPermissionsCommand = ReactiveCommand.CreateFromTask(CheckPermissionsAsync, canManageAccessibility);
 
         LoadSettings();
-        CheckPermissions();
+        _ = Task.Run(async () => await CheckPermissionsAsync());
 
         // Auto-load cached words on startup
         _ = Task.Run(async () =>
@@ -181,13 +183,7 @@ public class SettingsViewModel : ViewModelBase
     public bool HasAccessibilityPermissions
     {
         get => _hasAccessibilityPermissions;
-        set
-        {
-            if (this.RaiseAndSetIfChanged(ref _hasAccessibilityPermissions, value))
-            {
-                this.RaisePropertyChanged(nameof(CheckPermissionsButtonText));
-            }
-        }
+        set => this.RaiseAndSetIfChanged(ref _hasAccessibilityPermissions, value);
     }
 
     public string PermissionStatusMessage
@@ -199,21 +195,14 @@ public class SettingsViewModel : ViewModelBase
     public bool IsCheckingPermissions
     {
         get => _isCheckingPermissions;
-        set
-        {
-            if (this.RaiseAndSetIfChanged(ref _isCheckingPermissions, value))
-            {
-                this.RaisePropertyChanged(nameof(CheckPermissionsButtonText));
-            }
-        }
+        set => this.RaiseAndSetIfChanged(ref _isCheckingPermissions, value);
     }
 
-    public string CheckPermissionsButtonText =>
-        IsCheckingPermissions
-            ? "Checking..."
-            : HasAccessibilityPermissions
-                ? "Recheck Status (Granted)"
-                : "Recheck Status (Required)";
+    public bool IsAccessibilitySectionVisible
+    {
+        get => _isAccessibilitySectionVisible;
+        private set => this.RaiseAndSetIfChanged(ref _isAccessibilitySectionVisible, value);
+    }
 
     public ReactiveCommand<Unit, Unit> DownloadDictionaryCommand { get; }
     public ReactiveCommand<Unit, Unit> RefreshModelsCommand { get; }
@@ -419,12 +408,13 @@ public class SettingsViewModel : ViewModelBase
         }
     }
 
-    private void CheckPermissions()
+    private async Task CheckPermissionsAsync()
     {
-        if (_hotkeyService == null)
+        if (!IsAccessibilitySectionVisible || _hotkeyService == null)
         {
             HasAccessibilityPermissions = true;
-            PermissionStatusMessage = "Global hotkeys are not available on this platform.";
+            PermissionStatusMessage = string.Empty;
+            IsCheckingPermissions = false;
             return;
         }
 
@@ -433,7 +423,10 @@ public class SettingsViewModel : ViewModelBase
             IsCheckingPermissions = true;
             PermissionStatusMessage = "Checking accessibility permissions...";
 
-            var hasPermissions = _hotkeyService.CheckAccessibilityPermissions();
+            // Give UI a chance to update
+            await Task.Delay(100);
+
+            var hasPermissions = await Task.Run(() => _hotkeyService.CheckAccessibilityPermissions());
             HasAccessibilityPermissions = hasPermissions;
 
             PermissionStatusMessage = hasPermissions
@@ -454,7 +447,7 @@ public class SettingsViewModel : ViewModelBase
 
     private void RequestAccessibilityPermissions()
     {
-        if (_hotkeyService == null)
+        if (!IsAccessibilitySectionVisible || _hotkeyService == null)
         {
             return;
         }
@@ -465,9 +458,9 @@ public class SettingsViewModel : ViewModelBase
         // Recheck after a short delay to update status
         Task.Delay(1000).ContinueWith(_ =>
         {
-            Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
+            Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(async () =>
             {
-                CheckPermissions();
+                await CheckPermissionsAsync();
             });
         });
     }
