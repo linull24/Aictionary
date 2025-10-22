@@ -2,7 +2,8 @@
 
 快速且异常好用的词典 App，而且，它甚至跨平台！
 
-<img width="900" height="728" alt="image" src="https://github.com/user-attachments/assets/35c37d1f-f218-4147-bd01-72690cce0dd4" />
+<img width="900" height="728" alt="image" src="https://github.com/user-attachments/assets/f340fb79-87de-482e-87b7-cf363d6ac646" />
+
 
 ---
 
