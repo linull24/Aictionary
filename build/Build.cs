@@ -20,6 +20,7 @@ class Build : NukeBuild
     AbsolutePath WindowsFrameworkArtifactDirectory => ArtifactsDirectory / "windows-framework-dependent";
     AbsolutePath MacOSArtifactDirectory => ArtifactsDirectory / "macos";
     AbsolutePath MacOSFrameworkArtifactDirectory => ArtifactsDirectory / "macos-framework-dependent";
+    AbsolutePath MacOSDmgFile => MacOSArtifactDirectory / "Aictionary.dmg";
     AbsolutePath ProjectFile => SourceDirectory / "Aictionary.csproj";
 
     Target Clean => _ => _
@@ -177,7 +178,11 @@ class Build : NukeBuild
         });
 
     Target Publish => _ => _
-        .DependsOn(PublishWindows, PublishMacOS, PublishWindowsFrameworkDependent, PublishMacOSFrameworkDependent)
+        .DependsOn(PublishWindows,
+            PublishMacOS,
+            PublishWindowsFrameworkDependent,
+            PublishMacOSFrameworkDependent,
+            CreateMacOSDmg)
         .Executes(() =>
         {
             Serilog.Log.Information("All platforms published successfully!");
@@ -200,6 +205,34 @@ class Build : NukeBuild
                 .SetOutput(outputDirectory));
 
             Serilog.Log.Information($"Windows framework-dependent artifact published to: {WindowsFrameworkArtifactDirectory}");
+        });
+
+    Target CreateMacOSDmg => _ => _
+        .DependsOn(PublishMacOS)
+        .Executes(() =>
+        {
+            if (File.Exists(MacOSDmgFile))
+            {
+                File.Delete(MacOSDmgFile);
+            }
+
+            var appBundlePath = MacOSArtifactDirectory / "Aictionary.app";
+
+            var arguments = string.Join(" ", new[]
+            {
+                "--volname \"Aictionary\"",
+                "--window-pos 200 120",
+                "--window-size 800 400",
+                "--icon-size 128",
+                "--app-drop-link 600 185",
+                $"\"{MacOSDmgFile}\"",
+                $"\"{appBundlePath}\""
+            });
+
+            ProcessTasks.StartProcess("create-dmg", arguments)
+                .AssertZeroExitCode();
+
+            Serilog.Log.Information($"macOS DMG created at: {MacOSDmgFile}");
         });
 
     static void CopyDirectoryContents(string source, string destination)
