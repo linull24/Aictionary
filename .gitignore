@@ -5,3 +5,9 @@ riderModule.iml
 /_ReSharper.Caches/
 Aictionary.sln.DotSettings.user
 .DS_Store
+# NUKE Build
+artifacts/
+.nuke/
+build/bin/
+build/obj/
+.tmp
