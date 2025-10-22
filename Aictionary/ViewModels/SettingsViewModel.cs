@@ -19,6 +19,7 @@ public class SettingsViewModel : ViewModelBase
     private readonly IDictionaryService _dictionaryService;
     private readonly IOpenAIService _openAIService;
     private readonly IHotkeyService? _hotkeyService;
+    private readonly QuickQueryService? _quickQueryService;
 
     private string _apiBaseUrl = string.Empty;
     private string _apiKey = string.Empty;
@@ -43,12 +44,14 @@ public class SettingsViewModel : ViewModelBase
         ISettingsService settingsService,
         IDictionaryService dictionaryService,
         IOpenAIService openAIService,
-        IHotkeyService? hotkeyService = null)
+        IHotkeyService? hotkeyService = null,
+        QuickQueryService? quickQueryService = null)
     {
         _settingsService = settingsService;
         _dictionaryService = dictionaryService;
         _openAIService = openAIService;
         _hotkeyService = hotkeyService;
+        _quickQueryService = quickQueryService;
 
         IsAccessibilitySectionVisible = _hotkeyService != null && RuntimeInformation.IsOSPlatform(OSPlatform.OSX);
 
@@ -432,6 +435,14 @@ public class SettingsViewModel : ViewModelBase
             PermissionStatusMessage = hasPermissions
                 ? "Accessibility permissions granted"
                 : "Accessibility permissions required for global hotkeys";
+
+            // If permissions are now granted, re-register the hotkey
+            if (hasPermissions && _quickQueryService != null)
+            {
+                System.Console.WriteLine("[SettingsViewModel] Permissions granted, re-registering hotkey...");
+                _quickQueryService.ReregisterHotkey();
+                PermissionStatusMessage = "Accessibility permissions granted. Hotkey registered successfully.";
+            }
         }
         catch (System.Exception ex)
         {

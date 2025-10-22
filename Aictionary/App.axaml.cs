@@ -143,7 +143,7 @@ public partial class App : Application
 
         return new SettingsWindow
         {
-            DataContext = new SettingsViewModel(_settingsService, _dictionaryService, _openAIService, _hotkeyService)
+            DataContext = new SettingsViewModel(_settingsService, _dictionaryService, _openAIService, _hotkeyService, _quickQueryService)
         };
     }
 

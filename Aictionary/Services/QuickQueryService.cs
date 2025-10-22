@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Aictionary.ViewModels;
 using Aictionary.Views;
@@ -7,6 +8,9 @@ using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Input.Platform;
 using Avalonia.Threading;
+using SharpHook;
+using SharpHook.Data;
+using SharpHook.Native;
 
 namespace Aictionary.Services;
 
@@ -14,15 +18,25 @@ public class QuickQueryService
 {
     private readonly IHotkeyService _hotkeyService;
     private readonly ISettingsService _settingsService;
+    private readonly EventSimulator _eventSimulator;
 
     public QuickQueryService(IHotkeyService hotkeyService, ISettingsService settingsService)
     {
         _hotkeyService = hotkeyService;
         _settingsService = settingsService;
+        _eventSimulator = new EventSimulator();
     }
 
     public void Initialize()
     {
+        // Check permissions before registering
+        if (!_hotkeyService.CheckAccessibilityPermissions())
+        {
+            Console.WriteLine("[QuickQueryService] Accessibility permissions not granted. Hotkey not registered.");
+            Console.WriteLine("[QuickQueryService] Please grant accessibility permissions in Settings > Keyboard.");
+            return;
+        }
+
         RegisterQuickQueryHotkey();
 
         // Re-register when settings change
@@ -30,6 +44,15 @@ public class QuickQueryService
         {
             RegisterQuickQueryHotkey();
         };
+    }
+
+    public void ReregisterHotkey()
+    {
+        // This method can be called after permissions are granted
+        if (_hotkeyService.CheckAccessibilityPermissions())
+        {
+            RegisterQuickQueryHotkey();
+        }
     }
 
     private void RegisterQuickQueryHotkey()
@@ -59,6 +82,12 @@ public class QuickQueryService
         {
             Console.WriteLine("[QuickQueryService] Quick query triggered");
 
+            // Step 1: Simulate Cmd+C (or Ctrl+C on Windows/Linux) to copy selected text
+            await SimulateCopyShortcut();
+
+            // Wait a bit for the copy operation to complete
+            await Task.Delay(100);
+
             // Get or create main window
             var mainWindow = GetMainWindow();
             if (mainWindow == null)
@@ -76,9 +105,7 @@ public class QuickQueryService
                 return;
             }
 
-            // Copy selected text to clipboard (user should have text selected)
-            // Note: We can't programmatically copy selected text from other applications
-            // User needs to select text first, then press the hotkey
+            // Get text from clipboard
             var text = await clipboard.GetTextAsync();
             if (string.IsNullOrWhiteSpace(text))
             {
@@ -110,6 +137,40 @@ public class QuickQueryService
         catch (Exception ex)
         {
             Console.WriteLine($"[QuickQueryService] Error in HandleQuickQuery: {ex.Message}");
+        }
+    }
+
+    private async Task SimulateCopyShortcut()
+    {
+        try
+        {
+            Console.WriteLine("[QuickQueryService] Simulating copy shortcut...");
+
+            // Determine which modifier key to use based on OS
+            var modifierKeyCode = RuntimeInformation.IsOSPlatform(OSPlatform.OSX)
+                ? KeyCode.VcLeftMeta  // Command on macOS
+                : KeyCode.VcLeftControl;  // Ctrl on Windows/Linux
+
+            // Press modifier key (Command or Ctrl)
+            _eventSimulator.SimulateKeyPress(modifierKeyCode);
+            await Task.Delay(50);
+
+            // Press C key
+            _eventSimulator.SimulateKeyPress(KeyCode.VcC);
+            await Task.Delay(50);
+
+            // Release C key
+            _eventSimulator.SimulateKeyRelease(KeyCode.VcC);
+            await Task.Delay(50);
+
+            // Release modifier key
+            _eventSimulator.SimulateKeyRelease(modifierKeyCode);
+
+            Console.WriteLine("[QuickQueryService] Copy shortcut simulated");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[QuickQueryService] Error simulating copy shortcut: {ex.Message}");
         }
     }
 
