@@ -13,6 +13,8 @@ public class SettingsService : ISettingsService
     private readonly IConfigurationRoot _configuration;
     private AppSettings _currentSettings;
 
+    public event EventHandler? SettingsChanged;
+
     public SettingsService()
     {
         var appDirectory = AppDomain.CurrentDomain.BaseDirectory;
@@ -66,6 +68,7 @@ public class SettingsService : ISettingsService
         _currentSettings.ApiKey = _configuration["ApiKey"] ?? Environment.GetEnvironmentVariable("OPENAI_API_KEY") ?? string.Empty;
         _currentSettings.Model = _configuration["Model"] ?? "gpt-4o-mini";
         _currentSettings.DictionaryPath = _configuration["DictionaryPath"] ?? Path.Combine(appDirectory, "dictionary");
+        _currentSettings.QuickQueryHotkey = _configuration["QuickQueryHotkey"] ?? "Command+Shift+D";
     }
 
     public async Task SaveSettingsAsync(AppSettings settings)
@@ -77,10 +80,13 @@ public class SettingsService : ISettingsService
             ApiBaseUrl = settings.ApiBaseUrl,
             ApiKey = settings.ApiKey,
             Model = settings.Model,
-            DictionaryPath = settings.DictionaryPath
+            DictionaryPath = settings.DictionaryPath,
+            QuickQueryHotkey = settings.QuickQueryHotkey
         };
 
         var json = JsonSerializer.Serialize(settingsToSave, new JsonSerializerOptions { WriteIndented = true });
         await File.WriteAllTextAsync(_settingsFilePath, json);
+
+        SettingsChanged?.Invoke(this, EventArgs.Empty);
     }
 }

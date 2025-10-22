@@ -14,6 +14,8 @@ public partial class App : Application
     private static IDictionaryService? _dictionaryService;
     private static IOpenAIService? _openAIService;
     private static IQueryHistoryService? _queryHistoryService;
+    private static IHotkeyService? _hotkeyService;
+    private static QuickQueryService? _quickQueryService;
 
     public override void Initialize()
     {
@@ -96,6 +98,11 @@ public partial class App : Application
             _dictionaryService = new DictionaryService(_settingsService);
             _openAIService = new OpenAIService(_settingsService);
             _queryHistoryService = new QueryHistoryService();
+            _hotkeyService = new HotkeyService();
+            _quickQueryService = new QuickQueryService(_hotkeyService, _settingsService);
+
+            System.Console.WriteLine("[App] Initializing quick query service...");
+            _quickQueryService.Initialize();
 
             System.Console.WriteLine("[App] Creating main window");
             desktop.MainWindow = new MainWindow
@@ -136,7 +143,7 @@ public partial class App : Application
 
         return new SettingsWindow
         {
-            DataContext = new SettingsViewModel(_settingsService, _dictionaryService, _openAIService)
+            DataContext = new SettingsViewModel(_settingsService, _dictionaryService, _openAIService, _hotkeyService)
         };
     }
 

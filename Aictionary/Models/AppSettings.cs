@@ -15,4 +15,7 @@ public class AppSettings
 
     [JsonPropertyName("dictionary_path")]
     public string DictionaryPath { get; set; } = string.Empty;
+
+    [JsonPropertyName("quick_query_hotkey")]
+    public string QuickQueryHotkey { get; set; } = "Command+Shift+D";
 }

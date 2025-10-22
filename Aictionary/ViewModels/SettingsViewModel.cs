@@ -17,6 +17,7 @@ public class SettingsViewModel : ViewModelBase
     private readonly ISettingsService _settingsService;
     private readonly IDictionaryService _dictionaryService;
     private readonly IOpenAIService _openAIService;
+    private readonly IHotkeyService? _hotkeyService;
 
     private string _apiBaseUrl = string.Empty;
     private string _apiKey = string.Empty;
@@ -27,23 +28,38 @@ public class SettingsViewModel : ViewModelBase
     private bool _isLoadingModels = false;
     private string _searchText = string.Empty;
     private bool _isLoadingCachedWords = false;
+    private string _quickQueryHotkey = "Command+Shift+D";
+    private bool _hasAccessibilityPermissions = true;
+    private string _permissionStatusMessage = string.Empty;
+    private bool _isCheckingPermissions = false;
 
     private readonly ObservableCollection<string> _availableModels = new();
     private readonly ObservableCollection<string> _cachedWords = new();
     private readonly ObservableCollection<string> _filteredCachedWords = new();
 
-    public SettingsViewModel(ISettingsService settingsService, IDictionaryService dictionaryService, IOpenAIService openAIService)
+    public SettingsViewModel(
+        ISettingsService settingsService,
+        IDictionaryService dictionaryService,
+        IOpenAIService openAIService,
+        IHotkeyService? hotkeyService = null)
     {
         _settingsService = settingsService;
         _dictionaryService = dictionaryService;
         _openAIService = openAIService;
+        _hotkeyService = hotkeyService;
 
         DownloadDictionaryCommand = ReactiveCommand.CreateFromTask(DownloadDictionaryAsync);
         RefreshModelsCommand = ReactiveCommand.CreateFromTask(RefreshModelsAsync);
         ToggleApiKeyVisibilityCommand = ReactiveCommand.Create(ToggleApiKeyVisibility);
         RefreshCachedWordsCommand = ReactiveCommand.CreateFromTask(RefreshCachedWordsAsync);
+        RequestAccessibilityPermissionsCommand = ReactiveCommand.Create(RequestAccessibilityPermissions);
+        CheckPermissionsCommand = ReactiveCommand.Create(
+            CheckPermissions,
+            this.WhenAnyValue(x => x.IsCheckingPermissions)
+                .Select(isChecking => !isChecking));
 
         LoadSettings();
+        CheckPermissions();
 
         // Auto-load cached words on startup
         _ = Task.Run(async () =>
@@ -71,7 +87,8 @@ public class SettingsViewModel : ViewModelBase
             x => x.ApiBaseUrl,
             x => x.ApiKey,
             x => x.Model,
-            x => x.DictionaryPath
+            x => x.DictionaryPath,
+            x => x.QuickQueryHotkey
         )
         .Skip(1) // Skip the initial load
         .Throttle(TimeSpan.FromMilliseconds(500)) // Debounce to avoid saving too frequently
@@ -108,6 +125,12 @@ public class SettingsViewModel : ViewModelBase
     {
         get => _dictionaryPath;
         set => this.RaiseAndSetIfChanged(ref _dictionaryPath, value);
+    }
+
+    public string QuickQueryHotkey
+    {
+        get => _quickQueryHotkey;
+        set => this.RaiseAndSetIfChanged(ref _quickQueryHotkey, value);
     }
 
     public string StatusMessage
@@ -155,10 +178,49 @@ public class SettingsViewModel : ViewModelBase
     public ObservableCollection<string> CachedWords => _cachedWords;
     public ObservableCollection<string> FilteredCachedWords => _filteredCachedWords;
 
+    public bool HasAccessibilityPermissions
+    {
+        get => _hasAccessibilityPermissions;
+        set
+        {
+            if (this.RaiseAndSetIfChanged(ref _hasAccessibilityPermissions, value))
+            {
+                this.RaisePropertyChanged(nameof(CheckPermissionsButtonText));
+            }
+        }
+    }
+
+    public string PermissionStatusMessage
+    {
+        get => _permissionStatusMessage;
+        set => this.RaiseAndSetIfChanged(ref _permissionStatusMessage, value);
+    }
+
+    public bool IsCheckingPermissions
+    {
+        get => _isCheckingPermissions;
+        set
+        {
+            if (this.RaiseAndSetIfChanged(ref _isCheckingPermissions, value))
+            {
+                this.RaisePropertyChanged(nameof(CheckPermissionsButtonText));
+            }
+        }
+    }
+
+    public string CheckPermissionsButtonText =>
+        IsCheckingPermissions
+            ? "Checking..."
+            : HasAccessibilityPermissions
+                ? "Recheck Status (Granted)"
+                : "Recheck Status (Required)";
+
     public ReactiveCommand<Unit, Unit> DownloadDictionaryCommand { get; }
     public ReactiveCommand<Unit, Unit> RefreshModelsCommand { get; }
     public ReactiveCommand<Unit, Unit> ToggleApiKeyVisibilityCommand { get; }
     public ReactiveCommand<Unit, Unit> RefreshCachedWordsCommand { get; }
+    public ReactiveCommand<Unit, Unit> RequestAccessibilityPermissionsCommand { get; }
+    public ReactiveCommand<Unit, Unit> CheckPermissionsCommand { get; }
 
     private void LoadSettings()
     {
@@ -167,6 +229,7 @@ public class SettingsViewModel : ViewModelBase
         ApiKey = settings.ApiKey;
         Model = settings.Model;
         DictionaryPath = settings.DictionaryPath;
+        QuickQueryHotkey = settings.QuickQueryHotkey;
     }
 
     private async Task AutoSaveSettingsAsync()
@@ -178,7 +241,8 @@ public class SettingsViewModel : ViewModelBase
                 ApiBaseUrl = ApiBaseUrl,
                 ApiKey = ApiKey,
                 Model = Model,
-                DictionaryPath = DictionaryPath
+                DictionaryPath = DictionaryPath,
+                QuickQueryHotkey = QuickQueryHotkey
             };
 
             await _settingsService.SaveSettingsAsync(settings);
@@ -353,5 +417,58 @@ public class SettingsViewModel : ViewModelBase
                 word.Contains(SearchText, StringComparison.OrdinalIgnoreCase));
             _filteredCachedWords.AddRange(filtered);
         }
+    }
+
+    private void CheckPermissions()
+    {
+        if (_hotkeyService == null)
+        {
+            HasAccessibilityPermissions = true;
+            PermissionStatusMessage = "Global hotkeys are not available on this platform.";
+            return;
+        }
+
+        try
+        {
+            IsCheckingPermissions = true;
+            PermissionStatusMessage = "Checking accessibility permissions...";
+
+            var hasPermissions = _hotkeyService.CheckAccessibilityPermissions();
+            HasAccessibilityPermissions = hasPermissions;
+
+            PermissionStatusMessage = hasPermissions
+                ? "Accessibility permissions granted"
+                : "Accessibility permissions required for global hotkeys";
+        }
+        catch (System.Exception ex)
+        {
+            PermissionStatusMessage = $"Error checking permissions: {ex.Message}";
+            System.Console.WriteLine($"[SettingsViewModel] Error checking accessibility permissions: {ex.Message}");
+        }
+        finally
+        {
+            IsCheckingPermissions = false;
+            System.Console.WriteLine($"[SettingsViewModel] Accessibility permissions: {HasAccessibilityPermissions}");
+        }
+    }
+
+    private void RequestAccessibilityPermissions()
+    {
+        if (_hotkeyService == null)
+        {
+            return;
+        }
+
+        PermissionStatusMessage = "Opening System Preferences. Grant access and then click Recheck Status.";
+        _hotkeyService.RequestAccessibilityPermissions();
+
+        // Recheck after a short delay to update status
+        Task.Delay(1000).ContinueWith(_ =>
+        {
+            Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                CheckPermissions();
+            });
+        });
     }
 }
