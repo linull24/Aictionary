@@ -17,7 +17,9 @@ class Build : NukeBuild
     AbsolutePath SourceDirectory => RootDirectory / "Aictionary";
     AbsolutePath ArtifactsDirectory => RootDirectory / "artifacts";
     AbsolutePath WindowsArtifactDirectory => ArtifactsDirectory / "windows";
+    AbsolutePath WindowsFrameworkArtifactDirectory => ArtifactsDirectory / "windows-framework-dependent";
     AbsolutePath MacOSArtifactDirectory => ArtifactsDirectory / "macos";
+    AbsolutePath MacOSFrameworkArtifactDirectory => ArtifactsDirectory / "macos-framework-dependent";
     AbsolutePath ProjectFile => SourceDirectory / "Aictionary.csproj";
 
     Target Clean => _ => _
@@ -25,7 +27,25 @@ class Build : NukeBuild
         .Executes(() =>
         {
             if (Directory.Exists(ArtifactsDirectory))
-                Directory.Delete(ArtifactsDirectory, true);
+            {
+                try
+                {
+                    Directory.Delete(ArtifactsDirectory, true);
+                }
+                catch (IOException)
+                {
+                    var backupDirectory = ArtifactsDirectory + $"_{DateTime.Now:yyyyMMddHHmmssfff}";
+                    Directory.Move(ArtifactsDirectory, backupDirectory);
+                    Serilog.Log.Warning("Could not delete artifacts directory, moved to {BackupDirectory}", backupDirectory);
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    var backupDirectory = ArtifactsDirectory + $"_{DateTime.Now:yyyyMMddHHmmssfff}";
+                    Directory.Move(ArtifactsDirectory, backupDirectory);
+                    Serilog.Log.Warning("Could not delete artifacts directory due to access restrictions, moved to {BackupDirectory}", backupDirectory);
+                }
+            }
+
             Directory.CreateDirectory(ArtifactsDirectory);
         });
 
@@ -110,12 +130,76 @@ class Build : NukeBuild
             Serilog.Log.Information($"macOS artifact published to: {MacOSArtifactDirectory}");
         });
 
+    Target PublishMacOSFrameworkDependent => _ => _
+        .DependsOn(Clean)
+        .Executes(() =>
+        {
+            var publishOutput = MacOSFrameworkArtifactDirectory / "publish";
+            var appBundlePath = MacOSFrameworkArtifactDirectory / "Aictionary.app";
+            var contentsPath = appBundlePath / "Contents";
+            var macOsPath = contentsPath / "MacOS";
+
+            if (Directory.Exists(publishOutput))
+                Directory.Delete(publishOutput, true);
+
+            DotNetPublish(s => s
+                .SetProject(ProjectFile)
+                .SetConfiguration(Configuration)
+                .SetRuntime("osx-arm64")
+                .DisableSelfContained()
+                .DisablePublishSingleFile()
+                .SetPublishTrimmed(false)
+                .SetOutput(publishOutput));
+
+            if (Directory.Exists(appBundlePath))
+                Directory.Delete(appBundlePath, true);
+
+            Directory.CreateDirectory(macOsPath);
+            CopyDirectoryContents(publishOutput, macOsPath);
+            Directory.Delete(publishOutput, true);
+
+            var infoSource = SourceDirectory / "Info.plist";
+            var iconSource = SourceDirectory / "Assets" / "AppIcon.icns";
+            var resourcesDir = contentsPath / "Resources";
+            var infoTarget = contentsPath / "Info.plist";
+
+            Directory.CreateDirectory(resourcesDir);
+            if (File.Exists(infoSource))
+            {
+                File.Copy(infoSource, infoTarget, true);
+            }
+            if (File.Exists(iconSource))
+            {
+                File.Copy(iconSource, resourcesDir / "AppIcon.icns", true);
+            }
+
+            Serilog.Log.Information($"macOS framework-dependent artifact published to: {MacOSFrameworkArtifactDirectory}");
+        });
+
     Target Publish => _ => _
-        .DependsOn(PublishWindows, PublishMacOS)
+        .DependsOn(PublishWindows, PublishMacOS, PublishWindowsFrameworkDependent, PublishMacOSFrameworkDependent)
         .Executes(() =>
         {
             Serilog.Log.Information("All platforms published successfully!");
             Serilog.Log.Information($"Artifacts location: {ArtifactsDirectory}");
+        });
+
+    Target PublishWindowsFrameworkDependent => _ => _
+        .DependsOn(Clean)
+        .Executes(() =>
+        {
+            var outputDirectory = WindowsFrameworkArtifactDirectory / "Aictionary-win-x64";
+
+            DotNetPublish(s => s
+                .SetProject(ProjectFile)
+                .SetConfiguration(Configuration)
+                .SetRuntime("win-x64")
+                .DisableSelfContained()
+                .DisablePublishSingleFile()
+                .SetPublishTrimmed(false)
+                .SetOutput(outputDirectory));
+
+            Serilog.Log.Information($"Windows framework-dependent artifact published to: {WindowsFrameworkArtifactDirectory}");
         });
 
     static void CopyDirectoryContents(string source, string destination)
