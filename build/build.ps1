@@ -6,6 +6,6 @@ Param(
 
 $ScriptDir = Split-Path $MyInvocation.MyCommand.Path -Parent
 
-& dotnet run --project "$ScriptDir/build/build.csproj" -- $BuildArguments
+& dotnet run --project "$ScriptDir/build.csproj" -- $BuildArguments
 
 exit $LASTEXITCODE

@@ -32,7 +32,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: artifacts-windows
-          path: artifacts/windows*/**/*
+          path: |
+            artifacts/windows/
+            artifacts/windows-framework-dependent/
           retention-days: 7
 
   build-macos:
@@ -61,7 +63,11 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: artifacts-macos
-          path: artifacts/macos*/**/*
+          path: |
+            artifacts/macos/
+            artifacts/macos-framework-dependent/
+            artifacts/*.dmg
+          if-no-files-found: ignore
           retention-days: 7
 
   release:
@@ -77,10 +83,23 @@ jobs:
         with:
           path: artifacts
 
+      - name: Prepare release assets
+        run: |
+          mkdir release-assets
+          if [ -d "artifacts/artifacts-windows" ]; then
+            cp -r artifacts/artifacts-windows/* release-assets/
+          fi
+          if [ -d "artifacts/artifacts-macos" ]; then
+            cp -r artifacts/artifacts-macos/* release-assets/
+          fi
+
+      - name: List release assets
+        run: ls -R release-assets
+
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          files: artifacts/**/*
+          files: release-assets/**/*
           draft: false
           prerelease: false
         env:

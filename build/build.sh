@@ -4,4 +4,4 @@ set -eo pipefail
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-dotnet run --project "$SCRIPT_DIR/build/build.csproj" -- "$@"
+dotnet run --project "$SCRIPT_DIR/build.csproj" -- "$@"
