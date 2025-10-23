@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Net.Http;
@@ -23,7 +24,7 @@ public class DictionaryDownloadService : IDictionaryDownloadService
     public bool DictionaryExists(string dictionaryPath)
     {
         Console.WriteLine($"[DictionaryDownloadService] DictionaryExists check for path: {dictionaryPath}");
-        
+
         if (string.IsNullOrEmpty(dictionaryPath) || !Directory.Exists(dictionaryPath))
         {
             Console.WriteLine("[DictionaryDownloadService] Path is empty or doesn't exist");
@@ -97,6 +98,23 @@ public class DictionaryDownloadService : IDictionaryDownloadService
         await DownloadAndExtractDictionaryAsync(dictionaryPath, downloadSource, progressCallback);
     }
 
+    private static readonly HashSet<string> WindowsReservedNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+    {
+        "CON", "PRN", "AUX", "NUL",
+        "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
+        "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9"
+    };
+
+    private static bool IsWindowsReservedName(string name)
+    {
+        if (string.IsNullOrEmpty(name))
+            return false;
+
+        // Check if the name (without extension) is reserved
+        var nameWithoutExtension = Path.GetFileNameWithoutExtension(name);
+        return WindowsReservedNames.Contains(nameWithoutExtension);
+    }
+
     private async Task DownloadAndExtractDictionaryAsync(string dictionaryPath, DictionaryDownloadSource downloadSource, Action<string, double>? progressCallback)
     {
         Console.WriteLine("[DictionaryDownloadService] DownloadAndExtractDictionaryAsync started");
@@ -160,7 +178,7 @@ public class DictionaryDownloadService : IDictionaryDownloadService
                         var downloadedMB = totalRead / (1024.0 * 1024);
                         var totalMB = totalBytes / (1024.0 * 1024);
                         var progress = 5 + (totalRead * 75.0 / totalBytes);
-                        
+
                         Console.WriteLine($"[DictionaryDownloadService] Downloaded: {downloadedMB:F1} MB / {totalMB:F1} MB ({progress:F1}%)");
                         progressCallback?.Invoke($"Downloading: {downloadedMB:F1} MB / {totalMB:F1} MB", progress);
                     }
@@ -195,30 +213,68 @@ public class DictionaryDownloadService : IDictionaryDownloadService
                 {
                     var totalEntries = archive.Entries.Count;
                     var extractedEntries = 0;
+                    var skippedEntries = 0;
                     var lastProgressUpdate = 0;
 
                     Console.WriteLine($"[DictionaryDownloadService] Extracting {totalEntries} files...");
 
                     foreach (var entry in archive.Entries)
                     {
+                        // Check for Windows reserved names in the path
+                        var pathParts = entry.FullName.Split('/', '\\');
+                        var hasReservedName = false;
+
+                        foreach (var part in pathParts)
+                        {
+                            if (IsWindowsReservedName(part))
+                            {
+                                hasReservedName = true;
+                                Console.WriteLine($"[DictionaryDownloadService] Skipping entry with Windows reserved name: {entry.FullName}");
+                                skippedEntries++;
+                                break;
+                            }
+                        }
+
+                        if (hasReservedName)
+                        {
+                            extractedEntries++;
+                            continue;
+                        }
+
                         var destinationPath = Path.Combine(parentDirectory, entry.FullName);
-                        
+
                         // Create directory if it's a directory entry
                         if (string.IsNullOrEmpty(entry.Name))
                         {
-                            Directory.CreateDirectory(destinationPath);
+                            try
+                            {
+                                Directory.CreateDirectory(destinationPath);
+                            }
+                            catch (Exception ex)
+                            {
+                                Console.WriteLine($"[DictionaryDownloadService] Failed to create directory {destinationPath}: {ex.Message}");
+                                skippedEntries++;
+                            }
                         }
                         else
                         {
-                            // Ensure parent directory exists
-                            var destinationDir = Path.GetDirectoryName(destinationPath);
-                            if (!string.IsNullOrEmpty(destinationDir))
+                            try
                             {
-                                Directory.CreateDirectory(destinationDir);
-                            }
+                                // Ensure parent directory exists
+                                var destinationDir = Path.GetDirectoryName(destinationPath);
+                                if (!string.IsNullOrEmpty(destinationDir))
+                                {
+                                    Directory.CreateDirectory(destinationDir);
+                                }
 
-                            // Extract file with overwrite
-                            entry.ExtractToFile(destinationPath, overwrite: true);
+                                // Extract file with overwrite
+                                entry.ExtractToFile(destinationPath, overwrite: true);
+                            }
+                            catch (Exception ex)
+                            {
+                                Console.WriteLine($"[DictionaryDownloadService] Failed to extract {entry.FullName}: {ex.Message}");
+                                skippedEntries++;
+                            }
                         }
 
                         extractedEntries++;
@@ -232,6 +288,11 @@ public class DictionaryDownloadService : IDictionaryDownloadService
                             Console.WriteLine($"[DictionaryDownloadService] Extracted {extractedEntries}/{totalEntries} files ({progressPercent}%)");
                             progressCallback?.Invoke($"Extracting: {extractedEntries}/{totalEntries} files ({progressPercent}%)", extractionProgress);
                         }
+                    }
+
+                    if (skippedEntries > 0)
+                    {
+                        Console.WriteLine($"[DictionaryDownloadService] Skipped {skippedEntries} problematic files during extraction");
                     }
                 }
 
