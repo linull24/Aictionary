@@ -79,7 +79,7 @@
                     Padding="10"
                     Background="Transparent"
                     BorderThickness="0">
-                <lucide:PackIconLucide Kind="Download" Width="24" Height="24" />
+                <lucide:PackIconLucide Kind="Share" Width="24" Height="24" />
             </Button>
         </Grid>
 
