@@ -163,6 +163,51 @@ public class StatisticsViewModel : ViewModelBase
         var diff = (7 + (date.DayOfWeek - culture.DateTimeFormat.FirstDayOfWeek)) % 7;
         return date.Date.AddDays(-diff);
     }
+
+    public IEnumerable<string> GetAllWords()
+    {
+        var allWords = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var group in DailyGroups)
+        {
+            foreach (var wordCount in group.WordCounts)
+            {
+                allWords.Add(wordCount.Word);
+            }
+        }
+
+        foreach (var group in WeeklyGroups)
+        {
+            foreach (var wordCount in group.WordCounts)
+            {
+                allWords.Add(wordCount.Word);
+            }
+        }
+
+        foreach (var group in MonthlyGroups)
+        {
+            foreach (var wordCount in group.WordCounts)
+            {
+                allWords.Add(wordCount.Word);
+            }
+        }
+
+        foreach (var group in YearlyGroups)
+        {
+            foreach (var wordCount in group.WordCounts)
+            {
+                allWords.Add(wordCount.Word);
+            }
+        }
+
+        return allWords.OrderBy(w => w, StringComparer.OrdinalIgnoreCase);
+    }
+
+    public async Task RemoveWordAsync(string word)
+    {
+        await _historyService.RemoveWordEntriesAsync(word);
+        await LoadAsync();
+    }
 }
 
 public class StatisticsGroupItemViewModel

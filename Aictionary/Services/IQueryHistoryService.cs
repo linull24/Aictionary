@@ -9,4 +9,5 @@ public interface IQueryHistoryService
 {
     Task AddEntryAsync(string word, DateTime queriedAt);
     Task<IReadOnlyList<QueryHistoryEntry>> GetEntriesAsync();
+    Task RemoveWordEntriesAsync(string word);
 }

@@ -73,6 +73,27 @@ public class QueryHistoryService : IQueryHistoryService
         }
     }
 
+    public async Task RemoveWordEntriesAsync(string word)
+    {
+        if (string.IsNullOrWhiteSpace(word))
+        {
+            return;
+        }
+
+        await _fileSemaphore.WaitAsync();
+
+        try
+        {
+            var entries = await ReadEntriesInternalAsync();
+            entries.RemoveAll(e => string.Equals(e.Word, word.Trim(), StringComparison.OrdinalIgnoreCase));
+            await WriteEntriesInternalAsync(entries);
+        }
+        finally
+        {
+            _fileSemaphore.Release();
+        }
+    }
+
     private async Task<List<QueryHistoryEntry>> ReadEntriesInternalAsync()
     {
         try

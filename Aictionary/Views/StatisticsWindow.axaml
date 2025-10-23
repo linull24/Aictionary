@@ -3,6 +3,7 @@
         xmlns:vm="using:Aictionary.ViewModels"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:lucide="https://github.com/MahApps/IconPacks.Avalonia"
         mc:Ignorable="d"
         d:DesignWidth="800"
         d:DesignHeight="600"
@@ -30,18 +31,28 @@
                     <ItemsControl ItemsSource="{Binding WordCounts}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:StatisticsWordCountViewModel">
-                                <Grid ColumnDefinitions="*,Auto"
+                                <Grid ColumnDefinitions="*,Auto,Auto"
                                       Margin="0,4,0,4">
                                     <TextBlock Text="{Binding Word}"
                                                FontSize="16"/>
                                     <StackPanel Grid.Column="1"
                                                 HorizontalAlignment="Right"
-                                                Spacing="2">
+                                                Spacing="2"
+                                                Margin="0,0,8,0">
                                         <TextBlock Text="{Binding Count, StringFormat='×{0}'}"
                                                    FontWeight="SemiBold"/>
                                         <TextBlock Text="{Binding LastQueriedAtLocal, StringFormat='Last: {0:g}'}"
                                                    Foreground="Gray"/>
                                     </StackPanel>
+                                    <Button Grid.Column="2"
+                                            Click="DeleteWordButton_Click"
+                                            Tag="{Binding Word}"
+                                            ToolTip.Tip="Delete this word from history"
+                                            Padding="6"
+                                            Background="Transparent"
+                                            BorderThickness="0">
+                                        <lucide:PackIconLucide Kind="Trash2" Width="16" Height="16" Foreground="Gray" />
+                                    </Button>
                                 </Grid>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
@@ -53,9 +64,19 @@
 
     <Grid Margin="20"
           RowDefinitions="Auto,Auto,*">
-        <TextBlock Text="Historical Queries"
-                   FontSize="24"
-                   FontWeight="Bold"/>
+        <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Text="Historical Queries"
+                       FontSize="24"
+                       FontWeight="Bold"/>
+            <Button Grid.Column="1"
+                    Click="ExportButton_Click"
+                    ToolTip.Tip="Export all words to TXT file"
+                    Padding="10"
+                    Background="Transparent"
+                    BorderThickness="0">
+                <lucide:PackIconLucide Kind="Download" Width="24" Height="24" />
+            </Button>
+        </Grid>
 
         <StackPanel Grid.Row="1"
                     Orientation="Horizontal"
