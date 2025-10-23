@@ -49,6 +49,7 @@ public partial class App : Application
             System.Console.WriteLine($"[App] Dictionary exists: {dictionaryExists}");
 
             Views.DownloadProgressWindow? downloadWindow = null;
+            var downloadSucceeded = true;
 
             if (!dictionaryExists)
             {
@@ -84,6 +85,7 @@ public partial class App : Application
                 }
                 catch (System.Exception ex)
                 {
+                    downloadSucceeded = false;
                     System.Console.WriteLine($"[App] Download ERROR: {ex.GetType().Name}: {ex.Message}");
                     System.Console.WriteLine($"[App] Stack trace: {ex.StackTrace}");
                     await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
@@ -91,7 +93,12 @@ public partial class App : Application
                         downloadWindow.ViewModel.StatusMessage = $"Error: {ex.Message}";
                         downloadWindow.ViewModel.IsCompleted = true;
                         downloadWindow.ViewModel.IsIndeterminate = false;
+                        downloadWindow.ViewModel.Progress = 0;
                     });
+
+                    // Keep the error window open and wait for user to close it
+                    System.Console.WriteLine("[App] Download failed. Window will remain open for user to read error and close manually.");
+                    return;
                 }
             }
 
