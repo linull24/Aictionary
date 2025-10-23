@@ -25,7 +25,7 @@ jobs:
           restore-keys: ${{ runner.os }}-nuget-
 
       - name: Run NUKE
-        run: ./build.ps1 PublishWindows PublishWindowsFrameworkDependent
+        run: ./build/build.ps1 PublishWindows PublishWindowsFrameworkDependent
 
       - name: Upload Windows Artifacts
         uses: actions/upload-artifact@v4
@@ -53,7 +53,7 @@ jobs:
         run: brew install create-dmg
 
       - name: Run NUKE
-        run: ./build.sh PublishMacOS PublishMacOSFrameworkDependent CreateMacOSDmg
+        run: ./build/build.sh PublishMacOS PublishMacOSFrameworkDependent CreateMacOSDmg
 
       - name: Upload macOS Artifacts
         uses: actions/upload-artifact@v4
