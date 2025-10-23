@@ -119,65 +119,182 @@ public class DictionaryDownloadService : IDictionaryDownloadService
             Console.WriteLine($"[DictionaryDownloadService] Temp zip path: {tempZipPath}");
 
             Console.WriteLine("[DictionaryDownloadService] Invoking progress callback: Downloading dictionary...");
-            progressCallback?.Invoke("Downloading dictionary...", 10);
+            progressCallback?.Invoke("Downloading dictionary...", 5);
 
             Console.WriteLine("[DictionaryDownloadService] Starting HTTP request...");
-            var response = await _httpClient.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead);
+            using var response = await _httpClient.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead);
             Console.WriteLine($"[DictionaryDownloadService] HTTP response status: {response.StatusCode}");
 
-            response.EnsureSuccessStatusCode();
-            Console.WriteLine("[DictionaryDownloadService] Response status is successful");
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new HttpRequestException($"Failed to download dictionary. Server returned status code: {response.StatusCode}");
+            }
 
             var totalBytes = response.Content.Headers.ContentLength ?? -1;
             var canReportProgress = totalBytes != -1;
             Console.WriteLine($"[DictionaryDownloadService] Total bytes: {totalBytes}, Can report progress: {canReportProgress}");
 
+            if (!canReportProgress)
+            {
+                progressCallback?.Invoke("Downloading dictionary (size unknown)...", 5);
+            }
+
             Console.WriteLine("[DictionaryDownloadService] Starting file download...");
-            await using (var fileStream = new FileStream(tempZipPath, FileMode.Create, FileAccess.Write, FileShare.None))
+            await using (var fileStream = new FileStream(tempZipPath, FileMode.Create, FileAccess.Write, FileShare.None, bufferSize: 81920))
             {
                 await using var contentStream = await response.Content.ReadAsStreamAsync();
-                var buffer = new byte[8192];
+                var buffer = new byte[81920]; // 80KB buffer for better performance
                 var totalRead = 0L;
                 int bytesRead;
+                var lastProgressUpdate = 0L;
 
                 while ((bytesRead = await contentStream.ReadAsync(buffer, 0, buffer.Length)) > 0)
                 {
                     await fileStream.WriteAsync(buffer, 0, bytesRead);
                     totalRead += bytesRead;
 
-                    if (canReportProgress && totalRead % (1024 * 1024) == 0) // Log every MB
+                    // Update progress more frequently (every 500KB) to avoid appearing stuck
+                    if (canReportProgress && (totalRead - lastProgressUpdate) >= (512 * 1024))
                     {
-                        Console.WriteLine($"[DictionaryDownloadService] Downloaded: {totalRead / (1024.0 * 1024):F1} MB");
-                        var progress = 10 + (totalRead * 70.0 / totalBytes);
-                        progressCallback?.Invoke($"Downloading... {totalRead / (1024.0 * 1024):F1} MB / {totalBytes / (1024.0 * 1024):F1} MB", progress);
+                        lastProgressUpdate = totalRead;
+                        var downloadedMB = totalRead / (1024.0 * 1024);
+                        var totalMB = totalBytes / (1024.0 * 1024);
+                        var progress = 5 + (totalRead * 75.0 / totalBytes);
+                        
+                        Console.WriteLine($"[DictionaryDownloadService] Downloaded: {downloadedMB:F1} MB / {totalMB:F1} MB ({progress:F1}%)");
+                        progressCallback?.Invoke($"Downloading: {downloadedMB:F1} MB / {totalMB:F1} MB", progress);
+                    }
+                    else if (!canReportProgress && (totalRead - lastProgressUpdate) >= (5 * 1024 * 1024))
+                    {
+                        lastProgressUpdate = totalRead;
+                        var downloadedMB = totalRead / (1024.0 * 1024);
+                        Console.WriteLine($"[DictionaryDownloadService] Downloaded: {downloadedMB:F1} MB");
+                        progressCallback?.Invoke($"Downloading: {downloadedMB:F1} MB", 50);
                     }
                 }
 
-                Console.WriteLine($"[DictionaryDownloadService] Download complete. Total read: {totalRead} bytes");
+                Console.WriteLine($"[DictionaryDownloadService] Download complete. Total read: {totalRead} bytes ({totalRead / (1024.0 * 1024):F1} MB)");
+                progressCallback?.Invoke($"Download complete ({totalRead / (1024.0 * 1024):F1} MB)", 80);
             }
 
-            Console.WriteLine("[DictionaryDownloadService] Invoking progress callback: Extracting dictionary...");
-            progressCallback?.Invoke("Extracting dictionary...", 85);
+            // Ensure the directory doesn't exist before extraction
+            if (Directory.Exists(dictionaryPath))
+            {
+                Console.WriteLine("[DictionaryDownloadService] Removing existing dictionary directory before extraction...");
+                progressCallback?.Invoke("Preparing extraction...", 82);
+                Directory.Delete(dictionaryPath, true);
+            }
 
             Console.WriteLine("[DictionaryDownloadService] Starting extraction...");
-            ZipFile.ExtractToDirectory(tempZipPath, parentDirectory);
-            Console.WriteLine("[DictionaryDownloadService] Extraction complete");
+            progressCallback?.Invoke("Extracting dictionary files...", 85);
 
-            Console.WriteLine("[DictionaryDownloadService] Invoking progress callback: Download complete!");
-            progressCallback?.Invoke("Download complete!", 100);
+            try
+            {
+                // Extract with overwrite support for Windows
+                using (var archive = System.IO.Compression.ZipFile.OpenRead(tempZipPath))
+                {
+                    var totalEntries = archive.Entries.Count;
+                    var extractedEntries = 0;
+                    var lastProgressUpdate = 0;
+
+                    Console.WriteLine($"[DictionaryDownloadService] Extracting {totalEntries} files...");
+
+                    foreach (var entry in archive.Entries)
+                    {
+                        var destinationPath = Path.Combine(parentDirectory, entry.FullName);
+                        
+                        // Create directory if it's a directory entry
+                        if (string.IsNullOrEmpty(entry.Name))
+                        {
+                            Directory.CreateDirectory(destinationPath);
+                        }
+                        else
+                        {
+                            // Ensure parent directory exists
+                            var destinationDir = Path.GetDirectoryName(destinationPath);
+                            if (!string.IsNullOrEmpty(destinationDir))
+                            {
+                                Directory.CreateDirectory(destinationDir);
+                            }
+
+                            // Extract file with overwrite
+                            entry.ExtractToFile(destinationPath, overwrite: true);
+                        }
+
+                        extractedEntries++;
+
+                        // Update progress every 5% of files
+                        var progressPercent = (extractedEntries * 100) / totalEntries;
+                        if (progressPercent - lastProgressUpdate >= 5)
+                        {
+                            lastProgressUpdate = progressPercent;
+                            var extractionProgress = 85 + (progressPercent * 0.14); // 85% to 99%
+                            Console.WriteLine($"[DictionaryDownloadService] Extracted {extractedEntries}/{totalEntries} files ({progressPercent}%)");
+                            progressCallback?.Invoke($"Extracting: {extractedEntries}/{totalEntries} files ({progressPercent}%)", extractionProgress);
+                        }
+                    }
+                }
+
+                Console.WriteLine("[DictionaryDownloadService] Extraction complete");
+                progressCallback?.Invoke("Verifying installation...", 99);
+
+                // Verify extraction succeeded
+                if (!Directory.Exists(dictionaryPath))
+                {
+                    throw new InvalidOperationException("Extraction failed: Dictionary directory not found after extraction. The archive may not contain the expected 'dictionary' folder.");
+                }
+
+                var fileCount = Directory.GetFiles(dictionaryPath, "*.json").Length;
+                Console.WriteLine($"[DictionaryDownloadService] Verification: Found {fileCount} dictionary files");
+
+                if (fileCount < MinimumDictionaryFiles)
+                {
+                    throw new InvalidOperationException($"Extraction incomplete: Only {fileCount} files found, expected at least {MinimumDictionaryFiles}. Please try downloading again.");
+                }
+
+                Console.WriteLine("[DictionaryDownloadService] Installation complete and verified");
+                progressCallback?.Invoke("Download complete!", 100);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                Console.WriteLine($"[DictionaryDownloadService] Access denied during extraction: {ex.Message}");
+                throw new InvalidOperationException($"Cannot extract files - access denied. Please run the application as administrator or choose a different dictionary location. Error: {ex.Message}", ex);
+            }
+            catch (IOException ex)
+            {
+                Console.WriteLine($"[DictionaryDownloadService] IO error during extraction: {ex.Message}");
+                throw new InvalidOperationException($"File system error during extraction. Please ensure you have enough disk space and the dictionary path is accessible. Error: {ex.Message}", ex);
+            }
         }
-        catch (Exception ex)
+        catch (HttpRequestException ex)
         {
-            Console.WriteLine($"[DictionaryDownloadService] ERROR: {ex.GetType().Name}: {ex.Message}");
+            Console.WriteLine($"[DictionaryDownloadService] Network error: {ex.Message}");
+            throw new InvalidOperationException($"Network error while downloading dictionary. Please check your internet connection and try again. Error: {ex.Message}", ex);
+        }
+        catch (TaskCanceledException ex)
+        {
+            Console.WriteLine($"[DictionaryDownloadService] Download timeout: {ex.Message}");
+            throw new InvalidOperationException($"Download timed out. Please check your internet connection and try again. Error: {ex.Message}", ex);
+        }
+        catch (Exception ex) when (ex is not InvalidOperationException)
+        {
+            Console.WriteLine($"[DictionaryDownloadService] Unexpected error: {ex.GetType().Name}: {ex.Message}");
             Console.WriteLine($"[DictionaryDownloadService] Stack trace: {ex.StackTrace}");
-            throw;
+            throw new InvalidOperationException($"Unexpected error during dictionary download: {ex.Message}. Please try again or contact support if the problem persists.", ex);
         }
         finally
         {
             if (File.Exists(tempZipPath))
             {
-                Console.WriteLine("[DictionaryDownloadService] Deleting temp zip file");
-                File.Delete(tempZipPath);
+                try
+                {
+                    Console.WriteLine("[DictionaryDownloadService] Deleting temp zip file");
+                    File.Delete(tempZipPath);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[DictionaryDownloadService] Failed to delete temp file: {ex.Message}");
+                }
             }
         }
     }
