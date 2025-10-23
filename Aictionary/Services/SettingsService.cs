@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Text.Json;
 using System.Threading.Tasks;
+using Aictionary.Helpers;
 using Aictionary.Models;
 using Microsoft.Extensions.Configuration;
 
@@ -69,6 +70,17 @@ public class SettingsService : ISettingsService
         _currentSettings.Model = _configuration["Model"] ?? "gpt-4o-mini";
         _currentSettings.DictionaryPath = _configuration["DictionaryPath"] ?? Path.Combine(appDirectory, "dictionary");
         _currentSettings.QuickQueryHotkey = _configuration["QuickQueryHotkey"] ?? "Command+Shift+D";
+
+        // Load DictionaryDownloadSource from config, or use auto-detected default
+        var downloadSourceStr = _configuration["DictionaryDownloadSource"];
+        if (!string.IsNullOrEmpty(downloadSourceStr) && Enum.TryParse<DictionaryDownloadSource>(downloadSourceStr, out var downloadSource))
+        {
+            _currentSettings.DictionaryDownloadSource = downloadSource;
+        }
+        else
+        {
+            _currentSettings.DictionaryDownloadSource = LocaleHelper.GetDefaultDownloadSource();
+        }
     }
 
     public async Task SaveSettingsAsync(AppSettings settings)
@@ -81,7 +93,8 @@ public class SettingsService : ISettingsService
             ApiKey = settings.ApiKey,
             Model = settings.Model,
             DictionaryPath = settings.DictionaryPath,
-            QuickQueryHotkey = settings.QuickQueryHotkey
+            QuickQueryHotkey = settings.QuickQueryHotkey,
+            DictionaryDownloadSource = settings.DictionaryDownloadSource.ToString()
         };
 
         var json = JsonSerializer.Serialize(settingsToSave, new JsonSerializerOptions { WriteIndented = true });

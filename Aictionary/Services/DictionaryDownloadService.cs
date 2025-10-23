@@ -3,6 +3,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Net.Http;
 using System.Threading.Tasks;
+using Aictionary.Models;
 
 namespace Aictionary.Services;
 
@@ -43,10 +44,11 @@ public class DictionaryDownloadService : IDictionaryDownloadService
         }
     }
 
-    public async Task EnsureDictionaryExistsAsync(string dictionaryPath, Action<string, double>? progressCallback = null)
+    public async Task EnsureDictionaryExistsAsync(string dictionaryPath, DictionaryDownloadSource downloadSource, Action<string, double>? progressCallback = null)
     {
         Console.WriteLine("[DictionaryDownloadService] EnsureDictionaryExistsAsync called");
         Console.WriteLine($"[DictionaryDownloadService] Dictionary path: {dictionaryPath}");
+        Console.WriteLine($"[DictionaryDownloadService] Download source: {downloadSource}");
 
         if (string.IsNullOrEmpty(dictionaryPath))
         {
@@ -92,13 +94,14 @@ public class DictionaryDownloadService : IDictionaryDownloadService
         }
 
         Console.WriteLine("[DictionaryDownloadService] Starting download...");
-        await DownloadAndExtractDictionaryAsync(dictionaryPath, progressCallback);
+        await DownloadAndExtractDictionaryAsync(dictionaryPath, downloadSource, progressCallback);
     }
 
-    private async Task DownloadAndExtractDictionaryAsync(string dictionaryPath, Action<string, double>? progressCallback)
+    private async Task DownloadAndExtractDictionaryAsync(string dictionaryPath, DictionaryDownloadSource downloadSource, Action<string, double>? progressCallback)
     {
         Console.WriteLine("[DictionaryDownloadService] DownloadAndExtractDictionaryAsync started");
         Console.WriteLine($"[DictionaryDownloadService] Dictionary path: {dictionaryPath}");
+        Console.WriteLine($"[DictionaryDownloadService] Download source: {downloadSource}");
         Console.WriteLine($"[DictionaryDownloadService] progressCallback is null: {progressCallback == null}");
 
         var parentDirectory = Directory.GetParent(dictionaryPath)?.FullName ?? Directory.GetCurrentDirectory();
@@ -110,7 +113,7 @@ public class DictionaryDownloadService : IDictionaryDownloadService
             progressCallback?.Invoke("Fetching download URL...", 0);
 
             Console.WriteLine("[DictionaryDownloadService] Calling GetDictionaryDownloadUrlAsync...");
-            var downloadUrl = await _resourceService.GetDictionaryDownloadUrlAsync();
+            var downloadUrl = await _resourceService.GetDictionaryDownloadUrlAsync(downloadSource);
             Console.WriteLine($"[DictionaryDownloadService] Download URL: {downloadUrl}");
 
             Console.WriteLine($"[DictionaryDownloadService] Temp zip path: {tempZipPath}");

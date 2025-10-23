@@ -99,9 +99,17 @@
                         </StackPanel>
 
                         <StackPanel Spacing="5">
+                            <TextBlock Text="Download Source" FontWeight="SemiBold"/>
+                            <ComboBox ItemsSource="{Binding AvailableDownloadSources}"
+                                      SelectedItem="{Binding SelectedDownloadSource, Mode=TwoWay}"
+                                      HorizontalAlignment="Stretch"
+                                      Margin="0,5,0,0"/>
+                        </StackPanel>
+
+                        <StackPanel Spacing="5">
                             <Grid ColumnDefinitions="*,Auto,Auto">
                                 <TextBlock Grid.Column="0" Text="Words list" FontWeight="SemiBold"/>
-                                
+
                             </Grid>
                             <TextBox Text="{Binding SearchText}"
                                      Watermark="Search words..."

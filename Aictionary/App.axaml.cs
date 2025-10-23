@@ -61,7 +61,9 @@ public partial class App : Application
                 try
                 {
                     System.Console.WriteLine("[App] Starting download...");
-                    await downloadService.EnsureDictionaryExistsAsync(dictionaryPath, (message, progress) =>
+                    var downloadSource = _settingsService.CurrentSettings.DictionaryDownloadSource;
+                    System.Console.WriteLine($"[App] Using download source: {downloadSource}");
+                    await downloadService.EnsureDictionaryExistsAsync(dictionaryPath, downloadSource, (message, progress) =>
                     {
                         System.Console.WriteLine($"[App] Progress callback: {message} ({progress}%)");
                         Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>

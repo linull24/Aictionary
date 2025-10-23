@@ -27,6 +27,7 @@ public class SettingsViewModel : ViewModelBase
     private string _dictionaryPath = string.Empty;
     private string _statusMessage = string.Empty;
     private bool _isApiKeyVisible = false;
+    private DictionaryDownloadSource _selectedDownloadSource;
     private bool _isLoadingModels = false;
     private string _searchText = string.Empty;
     private bool _isLoadingCachedWords = false;
@@ -39,6 +40,11 @@ public class SettingsViewModel : ViewModelBase
     private readonly ObservableCollection<string> _availableModels = new();
     private readonly ObservableCollection<string> _cachedWords = new();
     private readonly ObservableCollection<string> _filteredCachedWords = new();
+    private readonly ObservableCollection<DictionaryDownloadSource> _availableDownloadSources = new()
+    {
+        DictionaryDownloadSource.GitHub,
+        DictionaryDownloadSource.Gitee
+    };
 
     public SettingsViewModel(
         ISettingsService settingsService,
@@ -93,7 +99,8 @@ public class SettingsViewModel : ViewModelBase
             x => x.ApiKey,
             x => x.Model,
             x => x.DictionaryPath,
-            x => x.QuickQueryHotkey
+            x => x.QuickQueryHotkey,
+            x => x.SelectedDownloadSource
         )
         .Skip(1) // Skip the initial load
         .Throttle(TimeSpan.FromMilliseconds(500)) // Debounce to avoid saving too frequently
@@ -183,6 +190,14 @@ public class SettingsViewModel : ViewModelBase
     public ObservableCollection<string> CachedWords => _cachedWords;
     public ObservableCollection<string> FilteredCachedWords => _filteredCachedWords;
 
+    public DictionaryDownloadSource SelectedDownloadSource
+    {
+        get => _selectedDownloadSource;
+        set => this.RaiseAndSetIfChanged(ref _selectedDownloadSource, value);
+    }
+
+    public ObservableCollection<DictionaryDownloadSource> AvailableDownloadSources => _availableDownloadSources;
+
     public bool HasAccessibilityPermissions
     {
         get => _hasAccessibilityPermissions;
@@ -222,6 +237,7 @@ public class SettingsViewModel : ViewModelBase
         Model = settings.Model;
         DictionaryPath = settings.DictionaryPath;
         QuickQueryHotkey = settings.QuickQueryHotkey;
+        SelectedDownloadSource = settings.DictionaryDownloadSource;
     }
 
     private async Task AutoSaveSettingsAsync()
@@ -234,7 +250,8 @@ public class SettingsViewModel : ViewModelBase
                 ApiKey = ApiKey,
                 Model = Model,
                 DictionaryPath = DictionaryPath,
-                QuickQueryHotkey = QuickQueryHotkey
+                QuickQueryHotkey = QuickQueryHotkey,
+                DictionaryDownloadSource = SelectedDownloadSource
             };
 
             await _settingsService.SaveSettingsAsync(settings);
@@ -267,7 +284,8 @@ public class SettingsViewModel : ViewModelBase
             downloadWindow.Show();
 
             System.Console.WriteLine($"[SettingsViewModel] Starting download to path: {DictionaryPath}");
-            await downloadService.EnsureDictionaryExistsAsync(DictionaryPath, (message, progress) =>
+            System.Console.WriteLine($"[SettingsViewModel] Using download source: {SelectedDownloadSource}");
+            await downloadService.EnsureDictionaryExistsAsync(DictionaryPath, SelectedDownloadSource, (message, progress) =>
             {
                 System.Console.WriteLine($"[SettingsViewModel] Progress callback: {message} ({progress}%)");
                 Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>

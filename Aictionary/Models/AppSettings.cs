@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using Aictionary.Helpers;
 
 namespace Aictionary.Models;
 
@@ -18,4 +19,7 @@ public class AppSettings
 
     [JsonPropertyName("quick_query_hotkey")]
     public string QuickQueryHotkey { get; set; } = "Command+Shift+D";
+
+    [JsonPropertyName("dictionary_download_source")]
+    public DictionaryDownloadSource DictionaryDownloadSource { get; set; } = LocaleHelper.GetDefaultDownloadSource();
 }
