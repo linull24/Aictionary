@@ -10,4 +10,7 @@ public class QueryHistoryEntry
 
     [JsonPropertyName("queried_at")]
     public DateTime QueriedAt { get; set; }
+
+    [JsonPropertyName("concise_definition")]
+    public string? ConciseDefinition { get; set; }
 }

@@ -31,26 +31,31 @@
                     <ItemsControl ItemsSource="{Binding WordCounts}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="vm:StatisticsWordCountViewModel">
-                                <Grid ColumnDefinitions="*,Auto,Auto"
+                                <Grid ColumnDefinitions="*,Auto"
                                       Margin="0,4,0,4">
-                                    <TextBlock Text="{Binding Word}"
-                                               FontSize="16"/>
-                                    <StackPanel Grid.Column="1"
-                                                HorizontalAlignment="Right"
-                                                Spacing="2"
-                                                Margin="0,0,8,0">
-                                        <TextBlock Text="{Binding Count, StringFormat='×{0}'}"
-                                                   FontWeight="SemiBold"/>
-                                        <TextBlock Text="{Binding LastQueriedAtLocal, StringFormat='Last: {0:g}'}"
-                                                   Foreground="Gray"/>
+                                    <StackPanel Spacing="4">
+                                        <TextBlock FontSize="16">
+                                            <Run Text="{Binding Word}" FontWeight="Medium"/>
+                                            <Run Text=" " />
+                                            <Run Text="{Binding Count, StringFormat='×{0}'}" Foreground="Gray"/>
+                                        </TextBlock>
+                                        <TextBlock Text="{Binding ConciseDefinition}"
+                                                   Foreground="Gray"
+                                                   FontSize="13"
+                                                   TextWrapping="Wrap"
+                                                   IsVisible="{Binding ConciseDefinition, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                        <TextBlock Foreground="Gray"
+                                                   FontSize="13"
+                                                   Text="{Binding LastQueriedAtLocal, StringFormat='Last: {0:g}'}"/>
                                     </StackPanel>
-                                    <Button Grid.Column="2"
+                                    <Button Grid.Column="1"
                                             Click="DeleteWordButton_Click"
                                             Tag="{Binding Word}"
                                             ToolTip.Tip="Delete this word from history"
                                             Padding="6"
                                             Background="Transparent"
-                                            BorderThickness="0">
+                                            BorderThickness="0"
+                                            VerticalAlignment="Top">
                                         <lucide:PackIconLucide Kind="Trash2" Width="16" Height="16" Foreground="Gray" />
                                     </Button>
                                 </Grid>

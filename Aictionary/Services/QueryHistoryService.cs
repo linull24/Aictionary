@@ -31,7 +31,7 @@ public class QueryHistoryService : IQueryHistoryService
         }
     }
 
-    public async Task AddEntryAsync(string word, DateTime queriedAt)
+    public async Task AddEntryAsync(string word, DateTime queriedAt, string? conciseDefinition = null)
     {
         if (string.IsNullOrWhiteSpace(word))
         {
@@ -41,7 +41,8 @@ public class QueryHistoryService : IQueryHistoryService
         var entry = new QueryHistoryEntry
         {
             Word = word.Trim(),
-            QueriedAt = queriedAt
+            QueriedAt = queriedAt,
+            ConciseDefinition = conciseDefinition
         };
 
         await _fileSemaphore.WaitAsync();

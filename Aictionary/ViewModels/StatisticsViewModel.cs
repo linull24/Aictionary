@@ -139,12 +139,15 @@ public class StatisticsViewModel : ViewModelBase
                 .Select(gw =>
                 {
                     var mostRecent = gw.Max(x => x.LocalTime);
-                    var representativeWord = gw
+                    var mostRecentEntry = gw
                         .OrderByDescending(x => x.LocalTime)
                         .ThenBy(x => x.Entry.Word, StringComparer.OrdinalIgnoreCase)
-                        .First()
-                        .Entry.Word;
-                    return new StatisticsWordCountViewModel(representativeWord, gw.Count(), mostRecent);
+                        .First();
+                    return new StatisticsWordCountViewModel(
+                        mostRecentEntry.Entry.Word,
+                        gw.Count(),
+                        mostRecent,
+                        mostRecentEntry.Entry.ConciseDefinition);
                 })
                 .OrderByDescending(x => x.Count)
                 .ThenBy(x => x.Word, StringComparer.OrdinalIgnoreCase)
@@ -226,14 +229,16 @@ public class StatisticsGroupItemViewModel
 
 public class StatisticsWordCountViewModel
 {
-    public StatisticsWordCountViewModel(string word, int count, DateTime lastQueriedAtLocal)
+    public StatisticsWordCountViewModel(string word, int count, DateTime lastQueriedAtLocal, string? conciseDefinition = null)
     {
         Word = word;
         Count = count;
         LastQueriedAtLocal = lastQueriedAtLocal;
+        ConciseDefinition = conciseDefinition;
     }
 
     public string Word { get; }
     public int Count { get; }
     public DateTime LastQueriedAtLocal { get; }
+    public string? ConciseDefinition { get; }
 }
