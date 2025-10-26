@@ -4,7 +4,6 @@
 
 <img width="900" height="728" alt="image" src="https://github.com/user-attachments/assets/f340fb79-87de-482e-87b7-cf363d6ac646" />
 
-
 ---
 
 ## 功能特性
@@ -24,10 +23,10 @@
 
 构建完成后，所有产物都会落在 `artifacts/` 目录下，也可在发布页直接获取：
 
-| 平台 | 自包含产物 | 体积更小的框架依赖产物 |
-| --- | --- | --- |
-| macOS | `artifacts/macos/Aictionary.app`<br>`artifacts/macos/Aictionary.dmg` | `artifacts/macos-framework-dependent/Aictionary.app` |
-| Windows | `artifacts/windows/Aictionary-win-x64` | `artifacts/windows-framework-dependent/Aictionary-win-x64` |
+| 平台    | 自包含产物                                                               | 体积更小的框架依赖产物                                       |
+| ------- | ------------------------------------------------------------------------ | ------------------------------------------------------------ |
+| macOS   | `artifacts/macos/Aictionary.app<br>``artifacts/macos/Aictionary.dmg` | `artifacts/macos-framework-dependent/Aictionary.app`       |
+| Windows | `artifacts/windows/Aictionary-win-x64`                                 | `artifacts/windows-framework-dependent/Aictionary-win-x64` |
 
 - macOS 建议直接打开 `Aictionary.dmg`，将 App 拖入 `Applications` 即可；
 - Windows 可按是否安装 .NET 运行时选择对应文件夹；
@@ -49,7 +48,7 @@
 
 ## 开发构建
 
-项目使用 [NUKE](https://nuke.build/) 编排构建流程，运行以下命令即可生成全部发行包：
+项目使用 [NUKE](https://nuke.build/) 编排构建流程，运行以下命令即可生成全部发行包，注意构建之前要保证电脑中有dotnet-sdk：
 
 ```bash
 dotnet run --project build/build.csproj
