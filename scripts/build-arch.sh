@@ -84,8 +84,8 @@ DESKTOP
 }
 EOF
 
-# Build package
-makepkg -f --noconfirm
+# Build package (skip dependency checks since we're in a container)
+makepkg -f --noconfirm --nodeps
 
 echo "Arch Linux package ($TYPE) built successfully!"
 ls -la *.pkg.tar.zst

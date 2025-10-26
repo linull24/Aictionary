@@ -172,7 +172,7 @@ jobs:
     - name: Install dependencies
       run: |
         pacman -Syu --noconfirm
-        pacman -S --noconfirm base-devel git
+        pacman -S --noconfirm base-devel git dotnet-runtime
     
     - uses: actions/checkout@v4
     
