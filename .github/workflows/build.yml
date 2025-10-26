@@ -52,11 +52,21 @@ jobs:
         dotnet run --project build/build.csproj -- PublishWindows${{ matrix.arch == 'amd64' && 'Amd64' || 'Arm64' }}
         dotnet run --project build/build.csproj -- PublishWindows${{ matrix.arch == 'amd64' && 'Amd64' || 'Arm64' }}FrameworkDependent
     
+    - name: Create Windows ZIP archives
+      run: |
+        cd artifacts
+        if (Test-Path "windows-${{ matrix.arch }}") {
+          Compress-Archive -Path "windows-${{ matrix.arch }}\*" -DestinationPath "Aictionary-windows-${{ matrix.arch }}.zip"
+        }
+        if (Test-Path "windows-${{ matrix.arch }}-framework-dependent") {
+          Compress-Archive -Path "windows-${{ matrix.arch }}-framework-dependent\*" -DestinationPath "Aictionary-windows-${{ matrix.arch }}-framework-dependent.zip"
+        }
+    
     - name: Upload Windows ${{ matrix.arch }} Artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: artifacts-windows-${{ matrix.arch }}
-        path: artifacts/windows-${{ matrix.arch }}*
+        name: windows-${{ matrix.arch }}-packages
+        path: artifacts/*.zip
 
   build-macos:
     strategy:
@@ -81,16 +91,25 @@ jobs:
         dotnet run --project build/build.csproj -- PublishMacOS${{ matrix.arch == 'intel' && 'Intel' || 'Arm64' }}FrameworkDependent
     
     - name: Create DMG for ${{ matrix.arch }}
-      if: matrix.arch == 'arm64'
-      run: dotnet run --project build/build.csproj -- CreateMacOSDmg
+      run: |
+        if [ "${{ matrix.arch }}" = "arm64" ]; then
+          dotnet run --project build/build.csproj -- CreateMacOSDmg
+        else
+          # Create DMG for Intel too
+          dmg_file="artifacts/macos-${{ matrix.arch }}/Aictionary.dmg"
+          app_bundle="artifacts/macos-${{ matrix.arch }}/Aictionary.app"
+          if [ -d "$app_bundle" ]; then
+            create-dmg --volname "Aictionary" --window-pos 200 120 --window-size 800 400 --icon-size 128 --app-drop-link 600 185 "$dmg_file" "$app_bundle"
+          fi
+        fi
     
     - name: Upload macOS ${{ matrix.arch }} Artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: artifacts-macos-${{ matrix.arch }}
-        path: artifacts/macos-${{ matrix.arch }}*
+        name: macos-${{ matrix.arch }}-packages
+        path: artifacts/macos-${{ matrix.arch }}/*.dmg
 
-  package-linux:
+  build-deb:
     needs: build-linux
     runs-on: ubuntu-22.04
     
@@ -119,24 +138,13 @@ jobs:
         chmod +x scripts/build-deb.sh
         ./scripts/build-deb.sh
     
-    - name: Generate PKGBUILD
-      run: |
-        chmod +x scripts/generate-pkgbuild.sh
-        ./scripts/generate-pkgbuild.sh
-    
     - name: Upload DEB packages
       uses: actions/upload-artifact@v4
       with:
         name: deb-packages
-        path: "*.deb"
-    
-    - name: Upload PKGBUILD
-      uses: actions/upload-artifact@v4
-      with:
-        name: archlinux-pkgbuild
-        path: PKGBUILD
+        path: "aictionary_*_*.deb"
 
-  package-archlinux:
+  build-arch:
     needs: build-linux
     runs-on: ubuntu-22.04
     container: archlinux:latest
@@ -175,12 +183,12 @@ jobs:
     - name: Upload Arch package
       uses: actions/upload-artifact@v4
       with:
-        name: archlinux-package
-        path: "*.pkg.tar.zst"
+        name: arch-packages
+        path: "aictionary-*-*.pkg.tar.zst"
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [build-linux, build-windows, build-macos, package-linux, package-archlinux]
+    needs: [build-windows, build-macos, build-deb, build-arch]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -193,46 +201,10 @@ jobs:
       with:
         path: release-artifacts
     
-    - name: Create release archives
+    - name: List artifacts
       run: |
-        cd release-artifacts
-        
-        # Create archives for each platform
-        if [ -d "artifacts-windows-amd64" ]; then
-          cd artifacts-windows-amd64
-          zip -r ../Aictionary-windows-amd64.zip .
-          cd ..
-        fi
-        
-        if [ -d "artifacts-windows-arm64" ]; then
-          cd artifacts-windows-arm64
-          zip -r ../Aictionary-windows-arm64.zip .
-          cd ..
-        fi
-        
-        if [ -d "artifacts-macos-intel" ]; then
-          cd artifacts-macos-intel
-          tar -czf ../Aictionary-macos-intel.tar.gz .
-          cd ..
-        fi
-        
-        if [ -d "artifacts-macos-arm64" ]; then
-          cd artifacts-macos-arm64
-          tar -czf ../Aictionary-macos-arm64.tar.gz .
-          cd ..
-        fi
-        
-        if [ -d "artifacts-linux-amd64" ]; then
-          cd artifacts-linux-amd64
-          tar -czf ../Aictionary-linux-amd64.tar.gz .
-          cd ..
-        fi
-        
-        if [ -d "artifacts-linux-arm64" ]; then
-          cd artifacts-linux-arm64
-          tar -czf ../Aictionary-linux-arm64.tar.gz .
-          cd ..
-        fi
+        echo "Available artifacts:"
+        find release-artifacts -type f -name "*" | sort
     
     - name: Create Release
       uses: actions/create-release@v1
@@ -263,41 +235,23 @@ jobs:
           - Windows用户可根据是否安装.NET运行时选择对应版本
           - Linux用户可选择二进制包或系统包管理器安装
     
-    - name: Upload Windows AMD64
-      if: hashFiles('release-artifacts/Aictionary-windows-amd64.zip') != ''
-      uses: actions/upload-release-asset@v1
+    - name: Upload all release assets
+      run: |
+        # Upload Windows ZIP files
+        for zip in release-artifacts/windows-*-packages/*.zip; do
+          if [ -f "$zip" ]; then
+            gh release upload ${{ github.ref_name }} "$zip" --clobber
+          fi
+        done
+        
+        # Upload macOS DMG files
+        for dmg in release-artifacts/macos-*-packages/*.dmg; do
+          if [ -f "$dmg" ]; then
+            gh release upload ${{ github.ref_name }} "$dmg" --clobber
+          fi
+        done
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: release-artifacts/Aictionary-windows-amd64.zip
-        asset_name: Aictionary-windows-amd64.zip
-        asset_content_type: application/zip
-    
-    - name: Upload Windows ARM64
-      if: hashFiles('release-artifacts/Aictionary-windows-arm64.zip') != ''
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: release-artifacts/Aictionary-windows-arm64.zip
-        asset_name: Aictionary-windows-arm64.zip
-        asset_content_type: application/zip
-    
-    - name: Upload macOS Intel
-      if: hashFiles('release-artifacts/Aictionary-macos-intel.tar.gz') != ''
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: release-artifacts/Aictionary-macos-intel.tar.gz
-        asset_name: Aictionary-macos-intel.tar.gz
-        asset_content_type: application/gzip
-    
-    - name: Upload macOS ARM64
-      if: hashFiles('release-artifacts/Aictionary-macos-arm64.tar.gz') != ''
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}64.tar.gz') != ''
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -329,31 +283,21 @@ jobs:
         asset_name: Aictionary-linux-arm64.tar.gz
         asset_content_type: application/gzip
     
-    - name: Upload DEB packages
-      if: hashFiles('release-artifacts/deb-packages/*.deb') != ''
+    - name: Upload Linux packages
       run: |
+        # Upload DEB packages
         for deb in release-artifacts/deb-packages/*.deb; do
           if [ -f "$deb" ]; then
-            filename=$(basename "$deb")
-            curl -X POST \
-              -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-              -H "Content-Type: application/vnd.debian.binary-package" \
-              --data-binary @"$deb" \
-              "${{ steps.create_release.outputs.upload_url }}?name=$filename"
+            gh release upload ${{ github.ref_name }} "$deb" --clobber
           fi
         done
-    
-    - name: Upload Arch packages
-      if: hashFiles('release-artifacts/archlinux-package/*.pkg.tar.zst') != ''
-      run: |
-        for pkg in release-artifacts/archlinux-package/*.pkg.tar.zst; do
+        
+        # Upload Arch packages
+        for pkg in release-artifacts/arch-packages/*.pkg.tar.zst; do
           if [ -f "$pkg" ]; then
-            filename=$(basename "$pkg")
-            curl -X POST \
-              -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-              -H "Content-Type: application/zstd" \
-              --data-binary @"$pkg" \
-              "${{ steps.create_release.outputs.upload_url }}?name=$filename"
+            gh release upload ${{ github.ref_name }} "$pkg" --clobber
           fi
         done
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
