@@ -41,7 +41,10 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: linux-${{ matrix.arch }}-packages
-        path: artifacts/*.tar.gz
+        path: |
+          artifacts/*.tar.gz
+          artifacts/linux-${{ matrix.arch }}/
+          artifacts/linux-${{ matrix.arch }}-framework-dependent/
 
   build-windows:
     strategy:
