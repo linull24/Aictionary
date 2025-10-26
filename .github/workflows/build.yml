@@ -7,11 +7,8 @@ on:
     branches: [ main, master ]
 
 jobs:
-  build:
-    strategy:
-      matrix:
-        os: [ubuntu-22.04, windows-latest, macos-latest]
-    runs-on: ${{ matrix.os }}
+  build-linux:
+    runs-on: ubuntu-22.04
     
     steps:
     - uses: actions/checkout@v4
@@ -21,17 +18,75 @@ jobs:
       with:
         dotnet-version: '8.0.x'
     
-    - name: Build All Platforms
-      run: dotnet run --project build/build.csproj -- Publish
+    - name: Build Linux
+      run: |
+        dotnet run --project build/build.csproj -- PublishLinuxAmd64
+        dotnet run --project build/build.csproj -- PublishLinuxArm64
+        dotnet run --project build/build.csproj -- PublishLinuxAmd64FrameworkDependent
+        dotnet run --project build/build.csproj -- PublishLinuxArm64FrameworkDependent
     
-    - name: Upload Artifacts
+    - name: Upload Linux Artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: artifacts-${{ matrix.os }}
-        path: artifacts/
+        name: artifacts-linux
+        path: artifacts/linux-*
+
+  build-windows:
+    runs-on: windows-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+    
+    - name: Build Windows
+      run: |
+        dotnet run --project build/build.csproj -- PublishWindowsAmd64
+        dotnet run --project build/build.csproj -- PublishWindowsArm64
+        dotnet run --project build/build.csproj -- PublishWindowsAmd64FrameworkDependent
+        dotnet run --project build/build.csproj -- PublishWindowsArm64FrameworkDependent
+    
+    - name: Upload Windows Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: artifacts-windows
+        path: artifacts/windows-*
+
+  build-macos:
+    runs-on: macos-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+    
+    - name: Install create-dmg
+      run: brew install create-dmg
+    
+    - name: Build macOS
+      run: |
+        dotnet run --project build/build.csproj -- PublishMacOSIntel
+        dotnet run --project build/build.csproj -- PublishMacOSArm64
+        dotnet run --project build/build.csproj -- PublishMacOSIntelFrameworkDependent
+        dotnet run --project build/build.csproj -- PublishMacOSArm64FrameworkDependent
+    
+    - name: Create DMG
+      run: dotnet run --project build/build.csproj -- CreateMacOSDmg
+    
+    - name: Upload macOS Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: artifacts-macos
+        path: artifacts/macos-*
 
   package-linux:
-    needs: build
+    needs: build-linux
     runs-on: ubuntu-22.04
     
     steps:
@@ -40,7 +95,7 @@ jobs:
     - name: Download Linux Artifacts
       uses: actions/download-artifact@v4
       with:
-        name: artifacts-ubuntu-22.04
+        name: artifacts-linux
         path: artifacts/
     
     - name: Install packaging tools
@@ -71,7 +126,7 @@ jobs:
         path: PKGBUILD
 
   package-archlinux:
-    needs: build
+    needs: build-linux
     runs-on: ubuntu-22.04
     container: archlinux:latest
     
@@ -86,7 +141,7 @@ jobs:
     - name: Download Linux Artifacts
       uses: actions/download-artifact@v4
       with:
-        name: artifacts-ubuntu-22.04
+        name: artifacts-linux
         path: artifacts/
     
     - name: Create non-root user for makepkg
