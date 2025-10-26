@@ -250,41 +250,7 @@ jobs:
             gh release upload ${{ github.ref_name }} "$dmg" --clobber
           fi
         done
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}64.tar.gz') != ''
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: release-artifacts/Aictionary-macos-arm64.tar.gz
-        asset_name: Aictionary-macos-arm64.tar.gz
-        asset_content_type: application/gzip
-    
-    - name: Upload Linux AMD64
-      if: hashFiles('release-artifacts/Aictionary-linux-amd64.tar.gz') != ''
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: release-artifacts/Aictionary-linux-amd64.tar.gz
-        asset_name: Aictionary-linux-amd64.tar.gz
-        asset_content_type: application/gzip
-    
-    - name: Upload Linux ARM64
-      if: hashFiles('release-artifacts/Aictionary-linux-arm64.tar.gz') != ''
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: release-artifacts/Aictionary-linux-arm64.tar.gz
-        asset_name: Aictionary-linux-arm64.tar.gz
-        asset_content_type: application/gzip
-    
-    - name: Upload Linux packages
-      run: |
+        
         # Upload DEB packages
         for deb in release-artifacts/deb-packages/*.deb; do
           if [ -f "$deb" ]; then
