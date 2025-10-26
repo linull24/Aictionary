@@ -53,17 +53,19 @@ build_deb() {
     fi
     
     # Create control file
-    cat > "$pkg_dir/DEBIAN/control" << EOF
-Package: $pkg_name
-Version: $VERSION
-Section: utils
-Priority: optional
-Architecture: $deb_arch
-Maintainer: Aictionary Team
-$depends
-Description: 快速且异常好用的词典 App ($package_type)
- 基于 Avalonia 框架的跨平台词典应用程序，支持本地词库和大语言模型驱动的词义生成。
-EOF
+    {
+        echo "Package: $pkg_name"
+        echo "Version: $VERSION"
+        echo "Section: utils"
+        echo "Priority: optional"
+        echo "Architecture: $deb_arch"
+        echo "Maintainer: Aictionary Team"
+        if [ -n "$depends" ]; then
+            echo "$depends"
+        fi
+        echo "Description: 快速且异常好用的词典 App ($package_type)"
+        echo " 基于 Avalonia 框架的跨平台词典应用程序，支持本地词库和大语言模型驱动的词义生成。"
+    } > "$pkg_dir/DEBIAN/control"
     
     # Create desktop file
     cat > "$pkg_dir/usr/share/applications/${pkg_name}.desktop" << EOF
