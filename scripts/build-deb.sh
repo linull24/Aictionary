@@ -1,6 +1,7 @@
 #!/bin/bash
 set -e
 
+TYPE=${1:-self-contained}
 VERSION=$(grep -o '<Version>[^<]*' Aictionary/Aictionary.csproj | sed 's/<Version>//')
 if [ -z "$VERSION" ]; then
     VERSION="1.0.0"
@@ -10,11 +11,20 @@ build_deb() {
     local arch=$1
     local artifact_dir=$2
     local deb_arch=$3
+    local package_type=$4
     
-    echo "Building DEB package for $arch..."
+    echo "Building DEB package for $arch ($package_type)..."
+    
+    # Set package name and dependencies based on type
+    local pkg_name="aictionary"
+    local depends=""
+    if [ "$package_type" = "framework-dependent" ]; then
+        pkg_name="aictionary-framework-dependent"
+        depends="Depends: dotnet-runtime-8.0"
+    fi
     
     # Create package structure
-    local pkg_dir="aictionary-${VERSION}-${arch}"
+    local pkg_dir="${pkg_name}-${VERSION}-${arch}"
     mkdir -p "$pkg_dir/DEBIAN"
     mkdir -p "$pkg_dir/usr/bin"
     mkdir -p "$pkg_dir/usr/share/applications"
@@ -29,20 +39,34 @@ build_deb() {
         return 1
     fi
     
+    # Copy additional files for framework-dependent version
+    if [ "$package_type" = "framework-dependent" ]; then
+        find "artifacts/$artifact_dir" -name "*.dll" -o -name "*.so" -o -name "*.json" -o -name "*.pdb" | while read file; do
+            if [ -f "$file" ]; then
+                cp "$file" "$pkg_dir/usr/bin/"
+            fi
+        done
+        # Copy Assets directory if exists
+        if [ -d "artifacts/$artifact_dir/Assets" ]; then
+            cp -r "artifacts/$artifact_dir/Assets" "$pkg_dir/usr/bin/"
+        fi
+    fi
+    
     # Create control file
     cat > "$pkg_dir/DEBIAN/control" << EOF
-Package: aictionary
+Package: $pkg_name
 Version: $VERSION
 Section: utils
 Priority: optional
 Architecture: $deb_arch
+$depends
 Maintainer: Aictionary Team
-Description: 快速且异常好用的词典 App
+Description: 快速且异常好用的词典 App ($package_type)
  基于 Avalonia 框架的跨平台词典应用程序，支持本地词库和大语言模型驱动的词义生成。
 EOF
     
     # Create desktop file
-    cat > "$pkg_dir/usr/share/applications/aictionary.desktop" << EOF
+    cat > "$pkg_dir/usr/share/applications/${pkg_name}.desktop" << EOF
 [Desktop Entry]
 Name=Aictionary
 Comment=快速且异常好用的词典 App
@@ -60,14 +84,19 @@ EOF
     
     # Build package
     fakeroot dpkg-deb --build "$pkg_dir"
-    mv "${pkg_dir}.deb" "aictionary_${VERSION}_${deb_arch}.deb"
+    mv "${pkg_dir}.deb" "${pkg_name}_${VERSION}_${deb_arch}.deb"
     rm -rf "$pkg_dir"
     
-    echo "Created: aictionary_${VERSION}_${deb_arch}.deb"
+    echo "Created: ${pkg_name}_${VERSION}_${deb_arch}.deb"
 }
 
-# Build for both architectures
-build_deb "amd64" "linux-amd64" "amd64"
-build_deb "arm64" "linux-arm64" "arm64"
+# Determine artifact directories based on type
+if [ "$TYPE" = "framework-dependent" ]; then
+    build_deb "amd64" "linux-amd64-framework-dependent" "amd64" "framework-dependent"
+    build_deb "arm64" "linux-arm64-framework-dependent" "arm64" "framework-dependent"
+else
+    build_deb "amd64" "linux-amd64" "amd64" "self-contained"
+    build_deb "arm64" "linux-arm64" "arm64" "self-contained"
+fi
 
-echo "DEB packages built successfully!"
+echo "DEB packages ($TYPE) built successfully!"

@@ -303,5 +303,39 @@ jobs:
           fi
         done
       env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}/windows-*-packages/*.zip; do
+          if [ -f "$zip" ]; then
+            gh release upload ${{ github.ref_name }} "$zip" --clobber
+          fi
+        done
+        
+        # Upload Linux tar.gz files
+        for tar in release-artifacts/linux-*-packages/*.tar.gz; do
+          if [ -f "$tar" ]; then
+            gh release upload ${{ github.ref_name }} "$tar" --clobber
+          fi
+        done
+        
+        # Upload macOS DMG files
+        for dmg in release-artifacts/macos-*-packages/*.dmg; do
+          if [ -f "$dmg" ]; then
+            gh release upload ${{ github.ref_name }} "$dmg" --clobber
+          fi
+        done
+        
+        # Upload DEB packages (both types)
+        for deb in release-artifacts/deb-packages-*/*.deb; do
+          if [ -f "$deb" ]; then
+            gh release upload ${{ github.ref_name }} "$deb" --clobber
+          fi
+        done
+        
+        # Upload Arch packages (both types)
+        for pkg in release-artifacts/arch-packages-*/*.pkg.tar.zst; do
+          if [ -f "$pkg" ]; then
+            gh release upload ${{ github.ref_name }} "$pkg" --clobber
+          fi
+        done
+      env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

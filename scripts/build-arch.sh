@@ -1,43 +1,72 @@
 #!/bin/bash
 set -e
 
-echo "Building Arch Linux package..."
+TYPE=${1:-self-contained}
+echo "Building Arch Linux package ($TYPE)..."
 
-# Generate PKGBUILD
-./scripts/generate-pkgbuild.sh
+# Set package name and dependencies based on type
+PKG_NAME="aictionary"
+DEPENDS="depends=()"
+if [ "$TYPE" = "framework-dependent" ]; then
+    PKG_NAME="aictionary-framework-dependent"
+    DEPENDS="depends=('dotnet-runtime')"
+fi
 
-# Create a simplified PKGBUILD for local build
-cat > PKGBUILD << 'EOF'
+# Create PKGBUILD based on type
+cat > PKGBUILD << EOF
 # Maintainer: Aictionary Team
-pkgname=aictionary
+pkgname=$PKG_NAME
 pkgver=1.0.0
 pkgrel=1
-pkgdesc="快速且异常好用的词典 App"
+pkgdesc="快速且异常好用的词典 App ($TYPE)"
 arch=('x86_64' 'aarch64')
 url="https://github.com/username/Aictionary"
 license=('MIT')
-depends=()
+$DEPENDS
 provides=('aictionary')
 
 package() {
     # Create directories
-    install -dm755 "${pkgdir}/usr/bin"
-    install -dm755 "${pkgdir}/usr/share/applications"
-    install -dm755 "${pkgdir}/usr/share/pixmaps"
+    install -dm755 "\${pkgdir}/usr/bin"
+    install -dm755 "\${pkgdir}/usr/share/applications"
+    install -dm755 "\${pkgdir}/usr/share/pixmaps"
     
-    # Install binary based on architecture
-    if [ "$CARCH" = "x86_64" ]; then
-        if [ -f "${srcdir}/../artifacts/linux-amd64/Aictionary" ]; then
-            install -Dm755 "${srcdir}/../artifacts/linux-amd64/Aictionary" "${pkgdir}/usr/bin/aictionary"
+    # Determine source directory based on type and architecture
+    local src_dir=""
+    if [ "$TYPE" = "framework-dependent" ]; then
+        if [ "\$CARCH" = "x86_64" ]; then
+            src_dir="\${srcdir}/../artifacts/linux-amd64-framework-dependent"
+        elif [ "\$CARCH" = "aarch64" ]; then
+            src_dir="\${srcdir}/../artifacts/linux-arm64-framework-dependent"
         fi
-    elif [ "$CARCH" = "aarch64" ]; then
-        if [ -f "${srcdir}/../artifacts/linux-arm64/Aictionary" ]; then
-            install -Dm755 "${srcdir}/../artifacts/linux-arm64/Aictionary" "${pkgdir}/usr/bin/aictionary"
+    else
+        if [ "\$CARCH" = "x86_64" ]; then
+            src_dir="\${srcdir}/../artifacts/linux-amd64"
+        elif [ "\$CARCH" = "aarch64" ]; then
+            src_dir="\${srcdir}/../artifacts/linux-arm64"
+        fi
+    fi
+    
+    # Install binary
+    if [ -f "\$src_dir/Aictionary" ]; then
+        install -Dm755 "\$src_dir/Aictionary" "\${pkgdir}/usr/bin/aictionary"
+    fi
+    
+    # Install additional files for framework-dependent version
+    if [ "$TYPE" = "framework-dependent" ]; then
+        find "\$src_dir" -name "*.dll" -o -name "*.so" -o -name "*.json" -o -name "*.pdb" | while read file; do
+            if [ -f "\$file" ]; then
+                install -Dm644 "\$file" "\${pkgdir}/usr/bin/\$(basename "\$file")"
+            fi
+        done
+        # Copy Assets directory if exists
+        if [ -d "\$src_dir/Assets" ]; then
+            cp -r "\$src_dir/Assets" "\${pkgdir}/usr/bin/"
         fi
     fi
     
     # Install desktop file
-    cat > "${pkgdir}/usr/share/applications/aictionary.desktop" << 'DESKTOP'
+    cat > "\${pkgdir}/usr/share/applications/$PKG_NAME.desktop" << 'DESKTOP'
 [Desktop Entry]
 Name=Aictionary
 Comment=快速且异常好用的词典 App
@@ -49,8 +78,8 @@ Categories=Office;Dictionary;
 DESKTOP
     
     # Install icon if available
-    if [ -f "${srcdir}/../Aictionary/Assets/AppIcon.png" ]; then
-        install -Dm644 "${srcdir}/../Aictionary/Assets/AppIcon.png" "${pkgdir}/usr/share/pixmaps/aictionary.png"
+    if [ -f "\${srcdir}/../Aictionary/Assets/AppIcon.png" ]; then
+        install -Dm644 "\${srcdir}/../Aictionary/Assets/AppIcon.png" "\${pkgdir}/usr/share/pixmaps/aictionary.png"
     fi
 }
 EOF
@@ -58,5 +87,5 @@ EOF
 # Build package
 makepkg -f --noconfirm
 
-echo "Arch Linux package built successfully!"
+echo "Arch Linux package ($TYPE) built successfully!"
 ls -la *.pkg.tar.zst
