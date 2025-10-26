@@ -59,8 +59,8 @@ Version: $VERSION
 Section: utils
 Priority: optional
 Architecture: $deb_arch
-$depends
 Maintainer: Aictionary Team
+$depends
 Description: 快速且异常好用的词典 App ($package_type)
  基于 Avalonia 框架的跨平台词典应用程序，支持本地词库和大语言模型驱动的词义生成。
 EOF
